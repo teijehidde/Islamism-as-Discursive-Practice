@@ -31,7 +31,7 @@ ui <- fluidPage(
         tabPanel("Correspondence Analysis",
                  br(), 
                  tabsetPanel(
-                   tabPanel("Corpus", 
+                   tabPanel("corpus", 
                             h3("Overview"),
                             
                             h5("Original"),
@@ -65,10 +65,10 @@ ui <- fluidPage(
                         tabPanel("Overview Corpora", 
                         fluidRow(column(5, # Output: scatter plot
                                         h3("Original"),
-                                        tableOutput("corpus.sups")), #### 
+                                        tableOutput("corpus_sups")), #### 
                                  column(5,
                                         h3("Culled"),
-                                        tableOutput("corpus.sups.culled")))),
+                                        tableOutput("corpus_sups.culled")))),
                         tabPanel("Table Docs SupCA",
                                  h3(textOutput("selected_axis_sups")), 
                                  tableOutput("table.sup.docs")),
@@ -101,32 +101,32 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  # Table Overview Original Corpus
+  # Table Overview Original corpus
   output$corpus.original <- renderTable({
     data.frame(
-      Documents = length(Corpus$Filenames), 
-      Number.occurences.T = length(unlist(Corpus$Stemmed.segments)),  
-      Number.words.V = length(TM$V.originalCorpus), 
-      Avg.T.per.V = length(unlist(Corpus$Stemmed.segments)) / length(TM$V.originalCorpus))
+      Documents = length(corpus$Filenames), 
+      Number.occurences.T = length(unlist(corpus$stemmed_segments)),  
+      Number.words.V = length(TM$V.originalcorpus), 
+      Avg.T.per.V = length(unlist(corpus$stemmed_segments)) / length(TM$V.originalcorpus))
   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 0)
   
-  # Table Overview Culled Corpus
+  # Table Overview Culled corpus
   output$corpus.culled <- renderTable({
     data.frame(
-      Documents = length(Corpus$Filenames), 
+      Documents = length(corpus$Filenames), 
       Number.occurences.T = sum(TM$LexicalTable), 
-      Number.words.V = length(TM$V.culledCorpus), 
-      Avg.T.per.V = sum(TM$LexicalTable) / length(TM$V.culledCorpus)) 
+      Number.words.V = length(TM$V.culledcorpus), 
+      Avg.T.per.V = sum(TM$LexicalTable) / length(TM$V.culledcorpus)) 
   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 0)
   
   # Table Overview Names Organizations and label documents 
   output$corpus.names <- renderTable ({
     data.frame(
-      No. = Corpus$Additional.data$Organization.metadata$No,
-      Name.Ar = Corpus$Additional.data$Organization.metadata$Organization.Arabic, 
-      Name.Eng = Corpus$Additional.data$Organization.metadata$Organization.English,
-      Charter = Corpus$Additional.data$Document.metadata$Label[match(Corpus$Additional.data$Organization.metadata$Charter, Corpus$Additional.data$Document.metadata$Document)], 
-      Self.Descr = Corpus$Additional.data$Document.metadata$Label[match(Corpus$Additional.data$Organization.metadata$Who.Are.we, Corpus$Additional.data$Document.metadata$Document)])
+      No. = corpus$additional_data$organization_metadata$No,
+      Name.Ar = corpus$additional_data$organization_metadata$Organization.Arabic, 
+      Name.Eng = corpus$additional_data$organization_metadata$Organization.English,
+      Charter = corpus$additional_data$document_metadata$Label[match(corpus$additional_data$organization_metadata$Charter, corpus$additional_data$document_metadata$Document)], 
+      Self.Descr = corpus$additional_data$document_metadata$Label[match(corpus$additional_data$organization_metadata$Who.Are.we, corpus$additional_data$document_metadata$Document)])
   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 0)
   
   # Histogram length statements ####  
@@ -161,14 +161,14 @@ server <- function(input, output, session) {
   # Table Words #### 
   output$table.words <- renderTable({ 
     Build.Table.Words(DimX = input$axisX, DimY = input$axisY, DimZ = (input$axisY + 1), 
-                      LT = TM$LexicalTable, Translation.list = Corpus$Additional.data$Translation.list, 
+                      LT = TM$LexicalTable, translation_list = corpus$additional_data$translation_list, 
                       Order = input$selection.criteria)
   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 4) 
   
   # Table Docs #### 
   output$table.docs <- renderTable({  
     Build.Table.Docs(DimX = input$axisX, DimY = input$axisY, 
-                     DimZ = (input$axisY + 1), Corpus.metadata = Corpus$Additional.data$Document.metadata, 
+                     DimZ = (input$axisY + 1), corpus.metadata = corpus$additional_data$document_metadata, 
                      Order = input$selection.criteria)
   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 4)
   
@@ -177,20 +177,20 @@ output$scatterPlot <- renderPlot({ # Define server logic required to draw a scat
 
 # Building dataframes for ggplot 
 df.docs <- data.frame(
-  label = unlist(lapply(rownames(CA$col$contrib), function(x) Corpus$Additional.data$Document.metadata$Label[Corpus$Additional.data$Document.metadata$Document == x])), 
+  label = unlist(lapply(rownames(CA$col$contrib), function(x) corpus$additional_data$document_metadata$Label[corpus$additional_data$document_metadata$Document == x])), 
   x = CA$col$coord[,  input$axisX], 
   y = CA$col$coord[,  input$axisY], 
   type = "Statement")
 
 if(input$language == "English") { 
   df.Words <- data.frame(
-    label = Corpus$Additional.data$Translation.list[match(TM$V.culledCorpus[as.numeric(rownames(TM$LexicalTable))], Corpus$Additional.data$Translation.list$Word), 2], 
+    label = corpus$additional_data$translation_list[match(TM$V.culledcorpus[as.numeric(rownames(TM$LexicalTable))], corpus$additional_data$translation_list$Word), 2], 
     x = CA$row$coord[,  input$axisX], 
     y = CA$row$coord[,  input$axisY], 
     type = "Word")
 } else {
   df.Words <- data.frame(
-    label = TM$V.culledCorpus[as.numeric(rownames(TM$LexicalTable))],
+    label = TM$V.culledcorpus[as.numeric(rownames(TM$LexicalTable))],
     x = CA$row$coord[,  input$axisX], 
     y = CA$row$coord[,  input$axisY], 
     type = "Word")
@@ -199,10 +199,10 @@ if(input$language == "English") {
 df.Annotate <- data.frame(
   Axis.X.Description = paste("Axis ", input$axisX, ", λ = ", round(CA$eig[input$axisX, 1], 2), "; var. = ", round(CA$eig[input$axisX, 2], 2), "%", sep = ""),
   Axis.Y.Description = paste("Axis ", input$axisY, ", λ = ", round(CA$eig[input$axisY, 1], 2), "; var. = ", round(CA$eig[input$axisY, 2], 2), "%", sep = ""),
-  Label.X.plus = Corpus$Additional.data$Principal.Axes.metadata$Plus.Description[input$axisX],
-  Label.X.min  = Corpus$Additional.data$Principal.Axes.metadata$Min.Description[input$axisX],
-  Label.Y.plus = Corpus$Additional.data$Principal.Axes.metadata$Plus.Description[input$axisY],
-  Label.Y.min  = Corpus$Additional.data$Principal.Axes.metadata$Min.Description[input$axisY]
+  Label.X.plus = corpus$additional_data$principal_axes_metadata$Plus.Description[input$axisX],
+  Label.X.min  = corpus$additional_data$principal_axes_metadata$Min.Description[input$axisX],
+  Label.Y.plus = corpus$additional_data$principal_axes_metadata$Plus.Description[input$axisY],
+  Label.Y.min  = corpus$additional_data$principal_axes_metadata$Min.Description[input$axisY]
 ) 
 
 # culling amount of plotted items 
@@ -336,7 +336,7 @@ scatter
   
   output$narrative <- renderTable({
     
-    Narrative  <- unlist(Corpus$Wordlists)
+    Narrative  <- unlist(corpus$Wordlists)
     Words.cluster <- HC$call$X[HC$call$X$clust == input$cluster, ]
     Document.indices <- TM$indices.docs.start[which(Shiny.df$`1`$Docs$Label == input$narrative)]:TM$indices.docs.end[which(Shiny.df$`1`$Docs$Label == input$narrative)] 
     Word.indices <- unlist(TM$HierachicalIndex[rownames(Words.cluster)]) # list of indices of all words in cluster. 
@@ -348,21 +348,21 @@ scatter
   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 0)
 
 # Text, Tables and Plots for Supplementary CA Tab #### 
-  # Table Overview Sups Corpus
-  output$corpus.sups <- renderTable({
+  # Table Overview Sups corpus
+  output$corpus_sups <- renderTable({
     data.frame(
-      Orgs = names(Corpus.sup),
-      Docs = unlist(lapply(Corpus.sup, function(x) length(x$Documents))),
-      occ.T = unlist(lapply(Corpus.sup, function(x) length(unlist(x$Wordlists)))),  
-      words.V = unlist(lapply(Corpus.sup, function(x) length(unique(unlist(x$Wordlists))))),
-      Avg.T.per.V = unlist(lapply(TM.sup, function(x) length(x$V.originalCorpus) /  sum(x$LexicalTable))))
+      Orgs = names(corpus_sup),
+      Docs = unlist(lapply(corpus_sup, function(x) length(x$Documents))),
+      occ.T = unlist(lapply(corpus_sup, function(x) length(unlist(x$Wordlists)))),  
+      words.V = unlist(lapply(corpus_sup, function(x) length(unique(unlist(x$Wordlists))))),
+      Avg.T.per.V = unlist(lapply(TM.sup, function(x) length(x$V.originalcorpus) /  sum(x$LexicalTable))))
   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 0)
   
-  # length(unlist(Corpus.sup$AaS$Wordlists))
-  # Table Overview Culled Sups Corpus #### 
-  output$corpus.sups.culled <- renderTable({
+  # length(unlist(corpus_sup$AaS$Wordlists))
+  # Table Overview Culled Sups corpus #### 
+  output$corpus_sups.culled <- renderTable({
     data.frame(
-      Orgs = names(Corpus.sup),
+      Orgs = names(corpus_sup),
       Docs = unlist(lapply(TM.sup, function(x) length(x$Segmented.HI))),
       occ.T = unlist(lapply(TM.sup, function(x) sum(x$LexicalTable))),  
       words.V = unlist(lapply(TM.sup, function(x) nrow(x$LexicalTable[rowSums(x$LexicalTable) != 0, ]))),
@@ -373,7 +373,7 @@ scatter
   
   # Table Sup Docs #### 
   output$table.sup.docs <- renderTable({  
-    Build.Table.Sup.docs(DimX = input$axisX, Corpus.metadata = Corpus$Additional.data$Document.sup.metadata, Orgs = input$SelectedOrgs)
+    Build.Table.Sup.docs(DimX = input$axisX, corpus.metadata = corpus$additional_data$document_sup_metadata, Orgs = input$SelectedOrgs)
   }, striped = TRUE, hover = TRUE, bordered  = TRUE)
   
   
@@ -387,7 +387,7 @@ scatter
   
 # Table Events #### 
 Table.Events <- reactive({ 
-  data.dates <- Corpus$Additional.data$Event.metadata
+  data.dates <- corpus$additional_data$event_metadata
   data.dates["Date"] <- as.Date(paste0(data.dates$Event.Day, "/", data.dates$Event.Month, "/", data.dates$Event.Year, sep = ""), "%d/%m/%y")
   data.dates <- data.dates[data.dates$Date %in% seq(input$selectedDates[1], input$selectedDates[2], by="days"), ] 
   data.dates["Date"] <- as.character(data.dates$Date)
@@ -403,12 +403,12 @@ output$chronologicalPlot <- renderPlot({
   # Building word data frame (only axis X)
   if(input$language == "English") { 
     df.Words <- data.frame(
-      label = Corpus$Additional.data$Translation.list[match(TM$V.culledCorpus[as.numeric(rownames(TM$LexicalTable))], Corpus$Additional.data$Translation.list$Word), 2], 
+      label = corpus$additional_data$translation_list[match(TM$V.culledcorpus[as.numeric(rownames(TM$LexicalTable))], corpus$additional_data$translation_list$Word), 2], 
       x = CA$row$coord[, input$axisX], 
       type = "Word")
   } else {
     df.Words <- data.frame(
-      label = TM$V.culledCorpus[as.numeric(rownames(TM$LexicalTable))],
+      label = TM$V.culledcorpus[as.numeric(rownames(TM$LexicalTable))],
       x = CA$row$coord[, input$axisX], 
       type = "Word")
   } 
@@ -421,33 +421,33 @@ output$chronologicalPlot <- renderPlot({
   
   # creating data frame from supplementary items. 
   df.all <- data.frame(
-    Label = paste0(as.character(Corpus$Additional.data$Document.sup.metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), Corpus$Additional.data$Document.sup.metadata$Document)]),
+    Label = paste0(as.character(corpus$additional_data$document_sup_metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), corpus$additional_data$document_sup_metadata$Document)]),
                    1:nrow(CA.sup$col.sup$coord)),
     Coord. = CA.sup$col.sup$coord[, input$axisX],
-    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(Corpus$Additional.data$Document.sup.metadata$Statement.Day[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Month[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Year[Corpus$Additional.data$Document.sup.metadata$Document  == x],
+    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(corpus$additional_data$document_sup_metadata$Statement.Day[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Month[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Year[corpus$additional_data$document_sup_metadata$Document  == x],
                                                                                          sep = ""))), "%d/%m/%y"),
-    Org = as.character(Corpus$Additional.data$Document.sup.metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), Corpus$Additional.data$Document.sup.metadata$Document)])    )
+    Org = as.character(corpus$additional_data$document_sup_metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), corpus$additional_data$document_sup_metadata$Document)])    )
   
   # Making data frames for documents 
   df.docs <- data.frame(
-    Label = unlist(lapply(rownames(CA$col$contrib), function(x) Corpus$Additional.data$Document.metadata$Label[Corpus$Additional.data$Document.metadata$Document == x])), 
+    Label = unlist(lapply(rownames(CA$col$contrib), function(x) corpus$additional_data$document_metadata$Label[corpus$additional_data$document_metadata$Document == x])), 
     Coord. = CA$col$coord[,  input$axisX], 
-    Date.full = as.Date(unlist(lapply(rownames(CA$col$contrib), function(x) paste0(Corpus$Additional.data$Document.metadata$Statement.Day[Corpus$Additional.data$Document.metadata$Document == x], "/", 
-                                                                                   Corpus$Additional.data$Document.metadata$Statement.Month[Corpus$Additional.data$Document.metadata$Document == x], "/",
-                                                                                   Corpus$Additional.data$Document.metadata$Statement.Year[Corpus$Additional.data$Document.metadata$Document == x], 
+    Date.full = as.Date(unlist(lapply(rownames(CA$col$contrib), function(x) paste0(corpus$additional_data$document_metadata$Statement.Day[corpus$additional_data$document_metadata$Document == x], "/", 
+                                                                                   corpus$additional_data$document_metadata$Statement.Month[corpus$additional_data$document_metadata$Document == x], "/",
+                                                                                   corpus$additional_data$document_metadata$Statement.Year[corpus$additional_data$document_metadata$Document == x], 
                                                                                    sep = ""))), "%d/%m/%y"), 
     Org = "General")
   
   df.all <- rbind(df.all, df.docs)
   
   df.Annotate <- data.frame(
-    Label.X.plus = Corpus$Additional.data$Principal.Axes.metadata$Plus.Description[input$axisX],
-    Label.X.min  = Corpus$Additional.data$Principal.Axes.metadata$Min.Description[input$axisX]
+    Label.X.plus = corpus$additional_data$principal_axes_metadata$Plus.Description[input$axisX],
+    Label.X.min  = corpus$additional_data$principal_axes_metadata$Min.Description[input$axisX]
   )
   
-  df.events <- Corpus$Additional.data$Event.metadata
+  df.events <- corpus$additional_data$event_metadata
   df.events["Date"] <- as.Date(paste0(df.events$Event.Day, "/", df.events$Event.Month, "/", df.events$Event.Year, sep = ""), "%d/%m/%y")
   df.events <- df.events[df.events$Date %in% seq(input$selectedDates[1], input$selectedDates[2], by="days"), ]
   
@@ -498,7 +498,7 @@ output$chronologicalPlot <- renderPlot({
        ) +
     labs(caption = stringr::str_wrap(
       paste("Plot of supplementary statements, smoothing method is loess with a confidence interval of 0.9.", " Events plotted:", 
-      paste(Corpus$Additional.data$Event.metadata$Label, Corpus$Additional.data$Event.metadata$Description, sep = " ", collapse = "; ")), 200)) + 
+      paste(corpus$additional_data$event_metadata$Label, corpus$additional_data$event_metadata$Description, sep = " ", collapse = "; ")), 200)) + 
     ggtitle(paste0("Figure 2: Discursive positionalities of supplementary statements across time, principal axis ", input$axisX, ".", sep = " ")) +  
     scale_y_continuous(breaks = df.Words$x, labels = df.Words$label, name = NULL, guide = guide_axis(check.overlap = TRUE)) # n.dodge=3  guide = guide_axis(check.overlap = TRUE) 
   # scale_y_discrete
@@ -532,18 +532,18 @@ output$click_info <- renderPrint({
   # creating data frame from supplementary items. 
   df.all <- data.frame(
     Coord. = CA.sup$col.sup$coord[, input$axisX],
-    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(Corpus$Additional.data$Document.sup.metadata$Statement.Day[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Month[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Year[Corpus$Additional.data$Document.sup.metadata$Document  == x],
+    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(corpus$additional_data$document_sup_metadata$Statement.Day[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Month[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Year[corpus$additional_data$document_sup_metadata$Document  == x],
                                                                                          sep = ""))), "%d/%m/%y"),
-    Org = as.character(Corpus$Additional.data$Document.sup.metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), Corpus$Additional.data$Document.sup.metadata$Document)])    )
+    Org = as.character(corpus$additional_data$document_sup_metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), corpus$additional_data$document_sup_metadata$Document)])    )
   
   # Making data frames for documents 
   df.docs <- data.frame(
     Coord. = CA$col$coord[,  input$axisX], 
-    Date.full = as.Date(unlist(lapply(rownames(CA$col$contrib), function(x) paste0(Corpus$Additional.data$Document.metadata$Statement.Day[Corpus$Additional.data$Document.metadata$Document == x], "/", 
-                                                                                   Corpus$Additional.data$Document.metadata$Statement.Month[Corpus$Additional.data$Document.metadata$Document == x], "/",
-                                                                                   Corpus$Additional.data$Document.metadata$Statement.Year[Corpus$Additional.data$Document.metadata$Document == x], 
+    Date.full = as.Date(unlist(lapply(rownames(CA$col$contrib), function(x) paste0(corpus$additional_data$document_metadata$Statement.Day[corpus$additional_data$document_metadata$Document == x], "/", 
+                                                                                   corpus$additional_data$document_metadata$Statement.Month[corpus$additional_data$document_metadata$Document == x], "/",
+                                                                                   corpus$additional_data$document_metadata$Statement.Year[corpus$additional_data$document_metadata$Document == x], 
                                                                                    sep = ""))), "%d/%m/%y"), 
     Org = "General")
   
@@ -561,18 +561,18 @@ output$brush_info <- renderPrint({
   # creating data frame from supplementary items. 
   df.all <- data.frame(
     Coord. = CA.sup$col.sup$coord[, input$axisX],
-    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(Corpus$Additional.data$Document.sup.metadata$Statement.Day[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Month[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Year[Corpus$Additional.data$Document.sup.metadata$Document  == x],
+    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(corpus$additional_data$document_sup_metadata$Statement.Day[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Month[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Year[corpus$additional_data$document_sup_metadata$Document  == x],
                                                                                          sep = ""))), "%d/%m/%y"),
-    Org = as.character(Corpus$Additional.data$Document.sup.metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), Corpus$Additional.data$Document.sup.metadata$Document)])    )
+    Org = as.character(corpus$additional_data$document_sup_metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), corpus$additional_data$document_sup_metadata$Document)])    )
   
   # Making data frames for documents 
   df.docs <- data.frame(
     Coord. = CA$col$coord[,  input$axisX], 
-    Date.full = as.Date(unlist(lapply(rownames(CA$col$contrib), function(x) paste0(Corpus$Additional.data$Document.metadata$Statement.Day[Corpus$Additional.data$Document.metadata$Document == x], "/", 
-                                                                                   Corpus$Additional.data$Document.metadata$Statement.Month[Corpus$Additional.data$Document.metadata$Document == x], "/",
-                                                                                   Corpus$Additional.data$Document.metadata$Statement.Year[Corpus$Additional.data$Document.metadata$Document == x], 
+    Date.full = as.Date(unlist(lapply(rownames(CA$col$contrib), function(x) paste0(corpus$additional_data$document_metadata$Statement.Day[corpus$additional_data$document_metadata$Document == x], "/", 
+                                                                                   corpus$additional_data$document_metadata$Statement.Month[corpus$additional_data$document_metadata$Document == x], "/",
+                                                                                   corpus$additional_data$document_metadata$Statement.Year[corpus$additional_data$document_metadata$Document == x], 
                                                                                    sep = ""))), "%d/%m/%y"), 
     Org = "General")
   
@@ -591,20 +591,20 @@ output$scatterPlot.sup <- renderPlot({ # Define server logic required to draw a 
   
   # Building dataframes for ggplot 
   df.docs <- data.frame(
-    label = unlist(lapply(rownames(CA$col$contrib), function(x) Corpus$Additional.data$Document.metadata$Label[Corpus$Additional.data$Document.metadata$Document == x])), 
+    label = unlist(lapply(rownames(CA$col$contrib), function(x) corpus$additional_data$document_metadata$Label[corpus$additional_data$document_metadata$Document == x])), 
     x = CA$col$coord[,  input$axisX], 
     y = CA$col$coord[,  input$axisY], 
     type = "Statement")
   
   if(input$language == "English") { 
     df.Words <- data.frame(
-      label = Corpus$Additional.data$Translation.list[match(TM$V.culledCorpus[as.numeric(rownames(TM$LexicalTable))], Corpus$Additional.data$Translation.list$Word), 2], 
+      label = corpus$additional_data$translation_list[match(TM$V.culledcorpus[as.numeric(rownames(TM$LexicalTable))], corpus$additional_data$translation_list$Word), 2], 
       x = CA$row$coord[,  input$axisX], 
       y = CA$row$coord[,  input$axisY], 
       type = "Word")
   } else {
     df.Words <- data.frame(
-      label = TM$V.culledCorpus[as.numeric(rownames(TM$LexicalTable))],
+      label = TM$V.culledcorpus[as.numeric(rownames(TM$LexicalTable))],
       x = CA$row$coord[,  input$axisX], 
       y = CA$row$coord[,  input$axisY], 
       type = "Word")
@@ -627,15 +627,15 @@ output$scatterPlot.sup <- renderPlot({ # Define server logic required to draw a 
   df.all.culled <- rbind(df.docs.culled, df.Words.culled)
   
   df.sups <- data.frame(
-    Label = paste0(as.character(Corpus$Additional.data$Document.sup.metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), Corpus$Additional.data$Document.sup.metadata$Document)]),
+    Label = paste0(as.character(corpus$additional_data$document_sup_metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), corpus$additional_data$document_sup_metadata$Document)]),
                    1:nrow(CA.sup$col.sup$coord)),
     x = CA.sup$col.sup$coord[, input$axisX],
     y = CA.sup$col.sup$coord[, input$axisY],
-    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(Corpus$Additional.data$Document.sup.metadata$Statement.Day[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Month[Corpus$Additional.data$Document.sup.metadata$Document  == x], "/",
-                                                                                         Corpus$Additional.data$Document.sup.metadata$Statement.Year[Corpus$Additional.data$Document.sup.metadata$Document  == x],
+    Date.full = as.Date(unlist(lapply(rownames(CA.sup$col.sup$coord), function(x) paste0(corpus$additional_data$document_sup_metadata$Statement.Day[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Month[corpus$additional_data$document_sup_metadata$Document  == x], "/",
+                                                                                         corpus$additional_data$document_sup_metadata$Statement.Year[corpus$additional_data$document_sup_metadata$Document  == x],
                                                                                          sep = ""))), "%d/%m/%y"),
-    Org = as.character(Corpus$Additional.data$Document.sup.metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), Corpus$Additional.data$Document.sup.metadata$Document)])    )
+    Org = as.character(corpus$additional_data$document_sup_metadata$Org.Abbreviation[match(rownames(CA.sup$col.sup$coord), corpus$additional_data$document_sup_metadata$Document)])    )
   
   
   # making selections by Org and Date range. 
@@ -645,10 +645,10 @@ output$scatterPlot.sup <- renderPlot({ # Define server logic required to draw a 
   df.Annotate <- data.frame(
     Axis.X.Description = paste("Axis ", input$axisX, ", λ = ", round(CA$eig[input$axisX, 1], 2), "; var. = ", round(CA$eig[input$axisX, 2], 2), "%", sep = ""),
     Axis.Y.Description = paste("Axis ", input$axisY, ", λ = ", round(CA$eig[input$axisY, 1], 2), "; var. = ", round(CA$eig[input$axisY, 2], 2), "%", sep = ""),
-    Label.X.plus = Corpus$Additional.data$Principal.Axes.metadata$Plus.Description[input$axisX],
-    Label.X.min  = Corpus$Additional.data$Principal.Axes.metadata$Min.Description[input$axisX],
-    Label.Y.plus = Corpus$Additional.data$Principal.Axes.metadata$Plus.Description[input$axisY],
-    Label.Y.min  = Corpus$Additional.data$Principal.Axes.metadata$Min.Description[input$axisY]
+    Label.X.plus = corpus$additional_data$principal_axes_metadata$Plus.Description[input$axisX],
+    Label.X.min  = corpus$additional_data$principal_axes_metadata$Min.Description[input$axisX],
+    Label.Y.plus = corpus$additional_data$principal_axes_metadata$Plus.Description[input$axisY],
+    Label.Y.min  = corpus$additional_data$principal_axes_metadata$Min.Description[input$axisY]
   ) 
   
   
