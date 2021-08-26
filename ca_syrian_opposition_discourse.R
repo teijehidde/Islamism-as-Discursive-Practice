@@ -17,7 +17,6 @@ source("functions.R")
 
 #----------- Loading corpora and meta data -----------####
 corpus <- LoadData("./corpus")
-
 support_files_list <- list.files("./support_files", full.names = TRUE)
 support_files <- lapply(
   support_files_list, function(x) {
@@ -41,21 +40,13 @@ names(support_files) <- gsub(
 )
 
 #----------- Word stemming and text mining -----------####
-stemmed_corpus <- lapply(
-  corpus$word_lists, function(x) {
-    StemmingWords(
-      x,
-      chars = support_files$stemmed_characters, punctuation = TRUE
-    )
-  }
-)
-
 mined_text <- MiningText(
-  stemmed_corpus,
-  v_min = 20,
-  drop_words = c(
-    as.character(support_files$tool_words[, 1]), support_files$org_names_stemmed
-  )
+  corpus, 
+  stemming_fun = StemmingWords,
+  drop_chars = support_files$stemmed_characters, 
+  drop_punctuation = TRUE,
+  drop_words = c(as.character(support_files$tool_words[, 1])),
+  v_min = 20
 )
 
 #----------- (Supplementary) Correspondence Analysis -----------####

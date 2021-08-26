@@ -2,14 +2,14 @@
 
 ShinyServer <- function(input, output, session) {
 
-  #--------- data original and culled corpus ---------#### 
+  #--------- corpus overview ---------#### 
   output$corpus_original <- renderTable(
     {
       data.frame(
         documents = length(corpus$file_names),
-        number_occurences_t = length(unlist(stemmed_corpus)),
-        number_words_v = length(mined_text$v_original_corpus),
-        avg_t_per_v = length(unlist(stemmed_corpus)) / length(mined_text$v_original_corpus)
+        number_occurences_t = length(unlist(mined_text$t_stemmed_corpus)),
+        number_words_v = length(mined_text$v_corpus),
+        avg_t_per_v = length(unlist(mined_text$t_stemmed_corpus)) / length(mined_text$v_corpus)
       )
     },
     striped = TRUE,
@@ -70,7 +70,7 @@ ShinyServer <- function(input, output, session) {
     )
   })
   
-  #--------- results CA analysis ---------#### 
+  #--------- CA eigenvalues ---------#### 
   scree_plot <- data.frame(
     variance = correspondence_analysis$eig[, 2],
     axis = seq(1:nrow(correspondence_analysis$eig))
@@ -116,10 +116,12 @@ ShinyServer <- function(input, output, session) {
     rownames = TRUE,
     digits = 4
   )
-
+  
+  #--------- CA tables ---------#### 
   output$table_words <- renderTable(
     {
       BuildTableWords(
+        data = mined_text, 
         dim_x = input$axis_x,
         lexical_table = mined_text$lexical_table, 
         translation_list = support_files$translation_list,
@@ -146,7 +148,7 @@ ShinyServer <- function(input, output, session) {
     digits = 4
   )
   
-  #--------- scatter plot ---------#### 
+  #--------- CA plot ---------#### 
   output$scatter_plot <- renderPlot(
     {
       # creating data frames for plot. 
@@ -427,7 +429,26 @@ ShinyServer <- function(input, output, session) {
     width = 750, height = 750, res = 100
   ) 
   
-  #--------- additional information provided in app ---------#### 
+  #--------- collocates ---------#### 
+  
+  # [This is something I can actually add to the app a little later on.] 
+  output$collocates <- renderTable(
+    {
+      BuildTableCollocates(
+        data = mined_text, 
+        word = input$selected_word_collocates, 
+        range = input$range_collocates, 
+        meta_data = support_files$document_metadata
+        )
+    },
+    striped = TRUE,
+    hover = TRUE,
+    bordered = TRUE, 
+    rownames = TRUE, 
+    align = c('lllrcl')
+  )
+  
+  #--------- dynamic text rendering for app ---------#### 
   output$selected_axis <- renderText({
     paste(
       "Axis ", input$axis_x,
@@ -449,42 +470,14 @@ ShinyServer <- function(input, output, session) {
   output$selected_plane <- renderText({
     paste("Plane axes", input$axis_x, "-", input$axis_y, sep = " ")
   })
-
-  output$selected_plane_suppl_correspondence_analysis <- renderText({
-    paste("Plane axes", input$axis_x, "-", input$axis_y, sep = " ")
+  
+  output$selected_word <- renderText({
+    paste("Collocates for: ", input$selected_word_collocates, sep = " ")
   })
 
 
-  output$selected_cluster_words <- renderText({
-    paste("Cluster ", input$cluster, sep = " ")
-  })
 
-  output$selected_cluster_docs <- renderText({
-    paste("Cluster ", input$cluster, sep = " ")
-  })
 
-  output$selected.narrative_text <- renderText({
-    paste("Selected text: ", input$narrative, " (Cluster ", input$cluster, ")", sep = "")
-  })
-
-  # [This is something I can actually add to the app a little later on.] 
-  output$narrative <- renderTable(
-    {
-      Narrative <- unlist(corpus$Wordlists)
-      Words.cluster <- HC$call$X[HC$call$X$clust == input$cluster, ]
-      Document.indices <- mined_text$indices.docs.start[which(Shiny.df$`1`$Docs$Label == input$narrative)]:mined_text$indices.docs.end[which(Shiny.df$`1`$Docs$Label == input$narrative)]
-      Word.indices <- unlist(mined_text$HierachicalIndex[rownames(Words.cluster)]) 
-
-      Narrative[Word.indices[Word.indices %in% Document.indices]] <-
-        lapply(Word.indices[Word.indices %in% Document.indices], function(x) paste0("(+)", Narrative[x], "(+)", sep = ""))
-
-      Narrative <- data.frame(Text = paste0(Narrative[Document.indices], collapse = " "))
-    },
-    striped = TRUE,
-    hover = TRUE,
-    bordered = TRUE,
-    digits = 0
-  )
   
 }
 

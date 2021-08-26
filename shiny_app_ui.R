@@ -20,7 +20,7 @@ shiny_ui <- fluidPage(
         max = 25, # nrow(correspondence_analysis$eig),
         value = 2
       ),
-      h4("Options CA plot"), # CA or also cluster plot?  
+      # h4("Options CA plot"), # CA or also cluster plot?  
       selectInput(
         inputId = "language",
         label = "Language:",
@@ -28,7 +28,7 @@ shiny_ui <- fluidPage(
       ),
       selectInput(
         inputId = "selection_criteria",
-        label = "Labels included on basis of:",
+        label = "Labels included in plot on basis of:",
         choices = c(
           "Contribution (axis X and Y)", "Contribution (axis X only)", "Inertia"
         )
@@ -53,9 +53,21 @@ shiny_ui <- fluidPage(
         min = 1,
         max = 100,
         value = 25
-      )
-    ),
-
+      ), 
+      selectInput(
+        inputId = "selected_word_collocates",
+        label = "Select word for collocates:",
+        choices = mined_text$v_culled_corpus
+        ),
+      sliderInput(
+        inputId = "range_collocates",
+        label = "Range collocates:",
+        min = 1,
+        max = 25,
+        value = 5
+        )
+      ),
+  # ),
     #--------- Main panel ---------####
     mainPanel(
       tabsetPanel(
@@ -104,6 +116,13 @@ shiny_ui <- fluidPage(
         tabPanel(
           "CA Simultaneous representation",
           plotOutput("scatter_plot")
+        ),
+        tabPanel(
+          "Collocates",
+          h3(
+            textOutput("selected_word")
+          ),
+          tableOutput("collocates")
         )
       )
     ) 
