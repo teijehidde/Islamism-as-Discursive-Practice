@@ -1,6 +1,8 @@
+#--------- Shiny App: Server ---------####
+
 ShinyServer <- function(input, output, session) {
 
-  # Table Overview Original corpus
+  #--------- data original and culled corpus ---------#### 
   output$corpus_original <- renderTable(
     {
       data.frame(
@@ -16,7 +18,6 @@ ShinyServer <- function(input, output, session) {
     digits = 0
   )
 
-  # Table Overview Culled corpus
   output$corpus_culled <- renderTable(
     {
       data.frame(
@@ -57,7 +58,6 @@ ShinyServer <- function(input, output, session) {
   #  digits = 0
   # )
 
-  # Histogram length statements ####
   output$histogram_plot <- renderPlot({
     hist(
       colSums(
@@ -69,8 +69,8 @@ ShinyServer <- function(input, output, session) {
       main = NULL
     )
   })
-
-  # Screeplot ####
+  
+  #--------- results CA analysis ---------#### 
   scree_plot <- data.frame(
     variance = correspondence_analysis$eig[, 2],
     axis = seq(1:nrow(correspondence_analysis$eig))
@@ -99,14 +99,14 @@ ShinyServer <- function(input, output, session) {
           )
         ) +
         labs(x = "Axis", y = "Variance")
-    } # ,  width = 4000, height = 4000, res = 600
+    } 
   )
 
-  # Table Eigenvalues ####
   table_eigenvalues <- data.frame(correspondence_analysis$eig[])
   colnames(table_eigenvalues) <- c("Eigenvalue", "Variance", "Cumulative")
   rownames(table_eigenvalues) <- paste0("Axis ", 1:nrow(table_eigenvalues), sep = " ")
-  output$table.eigenvalues <- renderTable(
+  
+  output$table_eigenvalues <- renderTable(
     {
       table_eigenvalues
     },
@@ -117,7 +117,6 @@ ShinyServer <- function(input, output, session) {
     digits = 4
   )
 
-  # Table Words ####
   output$table_words <- renderTable(
     {
       BuildTableWords(
@@ -133,7 +132,6 @@ ShinyServer <- function(input, output, session) {
     digits = 4
   )
 
-  # Table Docs ####
   output$table_docs <- renderTable(
     {
       BuildTableDocs(
@@ -148,11 +146,10 @@ ShinyServer <- function(input, output, session) {
     digits = 4
   )
   
-  # correspondence_analysis simultaneous plot ####
+  #--------- scatter plot ---------#### 
   output$scatter_plot <- renderPlot(
-    { # Define server logic required to draw a scatter plot
-
-      # Building dataframes for ggplot
+    {
+      # creating data frames for plot. 
       df_docs <- data.frame(
         label = sapply(
           rownames(correspondence_analysis$col$contrib),
@@ -191,26 +188,7 @@ ShinyServer <- function(input, output, session) {
         )
       }
 
-      df_annotate <- data.frame(
-        axis_x_description = paste(
-          "Axis ", input$axis_x,
-          ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
-          "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
-          sep = ""
-        ),
-        axis_y_description = paste(
-          "Axis ", input$axis_y,
-          ", λ = ", round(correspondence_analysis$eig[input$axis_y, 1], 2),
-          "; var. = ", round(correspondence_analysis$eig[input$axis_y, 2], 2), "%",
-          sep = ""
-        ),
-        label_x_plus = support_files$principal_axes_metadata$plus_description[input$axis_x],
-        label_x_min = support_files$principal_axes_metadata$min_description[input$axis_x],
-        label_y_plus = support_files$principal_axes_metadata$plus_description[input$axis_y],
-        label_y_min = support_files$principal_axes_metadata$min_description[input$axis_y]
-      )
-
-      # culling amount of plotted items
+      # culling data frames 
       if (input$selection_criteria == "Contribution (axis X only)") {
         df_docs_culled <- df_docs[
           order(
@@ -267,13 +245,39 @@ ShinyServer <- function(input, output, session) {
       }
       df_all <- rbind(df_docs, df_words)
       df_all_culled <- rbind(df_docs_culled, df_words_culled)
-
-      # Plotting
+      
+      # creating annotations and scale 
+      df_annotate <- data.frame(
+        axis_x_description = paste(
+          "Axis ", input$axis_x,
+          ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
+          "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
+          sep = ""
+        ),
+        axis_y_description = paste(
+          "Axis ", input$axis_y,
+          ", λ = ", round(correspondence_analysis$eig[input$axis_y, 1], 2),
+          "; var. = ", round(correspondence_analysis$eig[input$axis_y, 2], 2), "%",
+          sep = ""
+        ),
+        label_x_plus = support_files$principal_axes_metadata$plus_description[input$axis_x],
+        label_x_min = support_files$principal_axes_metadata$min_description[input$axis_x],
+        label_y_plus = support_files$principal_axes_metadata$plus_description[input$axis_y],
+        label_y_min = support_files$principal_axes_metadata$min_description[input$axis_y]
+      )
+      
+      temp_scale <- list()
+      temp_scale[["x_min"]] <- round(min(df_all$x), 1)
+      temp_scale[["x_max"]] <- temp_scale[["x_min"]] + round(((max(df_all$x) - min(df_all$x)) / 10), 1)
+      temp_scale[["x_middle"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
+      temp_scale[["label"]] <- temp_scale[["x_max"]] - temp_scale[["x_min"]]
+      temp_scale[["y_lower"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
+      
+      # Begin plotting graph
       scatter <- ggplot(data = df_words, aes(x = x, y = y)) +
         geom_hline(yintercept = 0, size = .15) +
         geom_vline(xintercept = 0, size = .15)
 
-      if (("Observations" %in% input$show_in_plots) == TRUE) {
         scatter <- scatter +
           geom_point(
             data = df_words,
@@ -286,11 +290,7 @@ ShinyServer <- function(input, output, session) {
             aes(x = x, y = y, colour = type, shape = type),
             alpha = .25,
             size = 1.5
-          )
-      }
-
-      if (("Labels" %in% input$show_in_plots) == TRUE) {
-        scatter <- scatter +
+          ) +
           geom_text_repel(
             data = df_all_culled,
             aes(x = x, y = y, label = label, colour = type),
@@ -311,35 +311,6 @@ ShinyServer <- function(input, output, session) {
             show.legend = FALSE,
             inherit.aes = FALSE
           )
-      }
-
-      if (("Interpretations" %in% input$show_in_plots) == TRUE) {
-        scatter <- scatter +
-          geom_label(
-            data = df_all,
-            aes(x = max(x + .4), y = 0, label = stringr::str_wrap(df_annotate$label_x_plus, 10)),
-            fill = "grey80",
-            size = (input$textsize / 10)
-          ) +
-          geom_label(
-            data = df_all,
-            aes(x = min(x - .4), y = 0, label = stringr::str_wrap(df_annotate$label_x_min, 10)),
-            fill = "grey80",
-            size = (input$textsize / 10)
-          ) +
-          geom_label(
-            data = df_all,
-            aes(x = 0, y = max(y + .4), label = stringr::str_wrap(df_annotate$label_x_plus, 10)),
-            fill = "grey80",
-            size = (input$textsize / 10)
-          ) +
-          geom_label(
-            data = df_all,
-            aes(x = 0, y = min(y - .4), label = stringr::str_wrap(df_annotate$label_x_min, 10)),
-            fill = "grey80",
-            size = (input$textsize / 10)
-          )
-      }
 
       # Layout
       scatter <- scatter +
@@ -355,7 +326,7 @@ ShinyServer <- function(input, output, session) {
           axis.ticks = element_blank()
         ) +
         scale_color_manual(
-          values = c("gray30", "black", "red", "green", "purple", "orange", "brown")
+          values = c("gray30", "black")
         ) +
         theme(
           legend.position = c(.99, .99), # position of legend
@@ -384,15 +355,8 @@ ShinyServer <- function(input, output, session) {
           sep = ""
         ) +
         coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE)
-
-      # Drawing scale on map...
-      temp_scale <- list()
-      temp_scale[["x_min"]] <- round(min(df_all$x), 1)
-      temp_scale[["x_max"]] <- temp_scale[["x_min"]] + round(((max(df_all$x) - min(df_all$x)) / 10), 1)
-      temp_scale[["x_middle"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
-      temp_scale[["label"]] <- temp_scale[["x_max"]] - temp_scale[["x_min"]]
-      temp_scale[["y_lower"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
-
+      
+      # adding annotations and scale to plot.  
       scatter <- scatter +
         geom_segment(
           data = df_all, aes(
@@ -460,14 +424,10 @@ ShinyServer <- function(input, output, session) {
       # printing plot
       scatter
     },
-    width = 750,
-    height = 750,
-    res = 100
-  ) #
-  # }, width = 2500, height = 2500, res = 300) # for publication
-
-
-  # Additional data used in Shiny app ####
+    width = 750, height = 750, res = 100
+  ) 
+  
+  #--------- additional information provided in app ---------#### 
   output$selected_axis <- renderText({
     paste(
       "Axis ", input$axis_x,
@@ -507,12 +467,13 @@ ShinyServer <- function(input, output, session) {
     paste("Selected text: ", input$narrative, " (Cluster ", input$cluster, ")", sep = "")
   })
 
+  # [This is something I can actually add to the app a little later on.] 
   output$narrative <- renderTable(
     {
       Narrative <- unlist(corpus$Wordlists)
       Words.cluster <- HC$call$X[HC$call$X$clust == input$cluster, ]
       Document.indices <- mined_text$indices.docs.start[which(Shiny.df$`1`$Docs$Label == input$narrative)]:mined_text$indices.docs.end[which(Shiny.df$`1`$Docs$Label == input$narrative)]
-      Word.indices <- unlist(mined_text$HierachicalIndex[rownames(Words.cluster)]) # list of indices of all words in cluster.
+      Word.indices <- unlist(mined_text$HierachicalIndex[rownames(Words.cluster)]) 
 
       Narrative[Word.indices[Word.indices %in% Document.indices]] <-
         lapply(Word.indices[Word.indices %in% Document.indices], function(x) paste0("(+)", Narrative[x], "(+)", sep = ""))
@@ -524,268 +485,8 @@ ShinyServer <- function(input, output, session) {
     bordered = TRUE,
     digits = 0
   )
-
-  # Table Events ####
-  Table.Events <- reactive({
-    data.dates <- support_files$event_metadata
-    data.dates["Date"] <- as.Date(paste0(data.dates$Event.Day, "/", data.dates$Event.Month, "/", data.dates$Event.Year, sep = ""), "%d/%m/%y")
-    data.dates <- data.dates[data.dates$Date %in% seq(input$selectedDates[1], input$selectedDates[2], by = "days"), ]
-    data.dates["Date"] <- as.character(data.dates$Date)
-
-    data.dates <- data.dates[c("Label", "Date", "Description")]
-  })
-
-  output$table.events <- renderTable(
-    {
-      Table.Events()
-    },
-    striped = TRUE,
-    hover = TRUE,
-    bordered = TRUE,
-    digits = 4
-  )
+  
+}
 
 # -------------- End --------- #### 
 
-# The following btis I will work on later: 
-# 
-#   # Supcorrespondence_analysis Chronological plot ####
-#   output$chronologicalPlot <- renderPlot(
-#     {
-# 
-#       # Building word data frame (only axis X)
-#       if (input$language == "English") {
-#         df_words <- data.frame(
-#           label = support_files$translation_list[match(mined_text$v_culled_corpus[as.numeric(rownames(mined_text$lexical_table))], support_files$translation_list$word), 2],
-#           x = correspondence_analysis$row$coord[, input$axis_x],
-#           type = "Word"
-#         )
-#       } else {
-#         df_words <- data.frame(
-#           label = mined_text$v_culled_corpus[as.numeric(rownames(mined_text$lexical_table))],
-#           x = correspondence_analysis$row$coord[, input$axis_x],
-#           type = "Word"
-#         )
-#       }
-#       # df_words <- df_words[!is.na(df_words$label), ]
-# 
-#       # culling amount of plotted items
-#       if (input$selection_criteria == "Contribution (axis X only)") {
-#         df_words <- df_words[order(correspondence_analysis$row$contrib[, input$axis_x], decreasing = TRUE)[0:input$number_words], ]
-#       }
-#       if (input$selection_criteria == "Contribution (axis X and Y)") {
-#         df_words <- df_words[order(correspondence_analysis$row$contrib[, input$axis_x], decreasing = TRUE)[0:input$number_words], ]
-#       }
-#       if (input$selection_criteria == "Inertia") {
-#         df_words <- df_words[order(correspondence_analysis$call$marge.row, decreasing = TRUE)[0:input$number_words], ]
-#       }
-# 
-#       # creating data frame from supplementary items.
-#       df_all <- data.frame(
-#         Label = paste0(
-#           as.character(support_files$document_sup_metadata$Org.Abbreviation[match(rownames(correspondence_analysis.sup$col.sup$coord), support_files$document_sup_metadata$Document)]),
-#           1:nrow(correspondence_analysis.sup$col.sup$coord)
-#         ),
-#         Coord. = correspondence_analysis.sup$col.sup$coord[, input$axis_x],
-#         date_full = as.Date(unlist(lapply(rownames(correspondence_analysis.sup$col.sup$coord), function(x) {
-#           paste0(support_files$document_sup_metadata$Statement.Day[support_files$document_sup_metadata$Document == x], "/",
-#             support_files$document_sup_metadata$Statement.Month[support_files$document_sup_metadata$Document == x], "/",
-#             support_files$document_sup_metadata$Statement.Year[support_files$document_sup_metadata$Document == x],
-#             sep = ""
-#           )
-#         })), "%d/%m/%y"),
-#         Org = as.character(support_files$document_sup_metadata$Org.Abbreviation[match(rownames(correspondence_analysis.sup$col.sup$coord), support_files$document_sup_metadata$Document)])
-#       )
-# 
-#       # Making data frames for documents
-#       df_docs <- data.frame(
-#         Label = unlist(lapply(rownames(correspondence_analysis$col$contrib), function(x) support_files$document_metadata$Label[support_files$document_metadata$Document == x])),
-#         Coord. = correspondence_analysis$col$coord[, input$axis_x],
-#         date_full = as.Date(unlist(lapply(rownames(correspondence_analysis$col$contrib), function(x) {
-#           paste0(support_files$document_metadata$Statement.Day[support_files$document_metadata$Document == x], "/",
-#             support_files$document_metadata$Statement.Month[support_files$document_metadata$Document == x], "/",
-#             support_files$document_metadata$Statement.Year[support_files$document_metadata$Document == x],
-#             sep = ""
-#           )
-#         })), "%d/%m/%y"),
-#         Org = "General"
-#       )
-# 
-#       df_all <- rbind(df_all, df_docs)
-# 
-#       df_annotate <- data.frame(
-#         label_x_plus = support_files$principal_axes_metadata$Plus.Description[input$axis_x],
-#         label_x_min  = support_files$principal_axes_metadata$Min.Description[input$axis_x]
-#       )
-# 
-#       df.events <- support_files$event_metadata
-#       df.events["Date"] <- as.Date(paste0(df.events$Event.Day, "/", df.events$Event.Month, "/", df.events$Event.Year, sep = ""), "%d/%m/%y")
-#       df.events <- df.events[df.events$Date %in% seq(input$selectedDates[1], input$selectedDates[2], by = "days"), ]
-# 
-#       # making selections in supplementary corpus by Org and Date range. NB NOT in primary corpus!
-#       df_all <- df_all[df_all$Org %in% input$SelectedOrgs, ]
-#       df_all <- df_all[df_all$date_full %in% seq(input$selectedDates[1], input$selectedDates[2], by = "days"), ]
-# 
-#       # Plotting
-#       Supcorrespondence_analysis.Chrn.Plot <- ggplot(data = df_all)
-# 
-#       if (("Observations" %in% input$show_in_plots) == TRUE) {
-#         Supcorrespondence_analysis.Chrn.Plot <- Supcorrespondence_analysis.Chrn.Plot +
-#           geom_point(data = df_all, aes(x = date_full, y = Coord., color = Org), alpha = .5)
-#       }
-# 
-#       if (("Interpretations" %in% input$show_in_plots) == TRUE) {
-#         Supcorrespondence_analysis.Chrn.Plot <- Supcorrespondence_analysis.Chrn.Plot +
-#           geom_label(data = df_annotate, aes(x = min(input$selectedDates), y = max(df_all$Coord.) - .3, label = stringr::str_wrap(label_x_plus, 10)), fill = "grey80", size = (input$textsize / 10)) +
-#           geom_label(data = df_annotate, aes(x = min(input$selectedDates), y = min(df_all$Coord.) + .3, label = stringr::str_wrap(label_x_min, 10)), fill = "grey80", size = (input$textsize / 10))
-#       }
-# 
-#       if (("Smoothed lines" %in% input$show_in_plots) == TRUE) {
-#         Supcorrespondence_analysis.Chrn.Plot <- Supcorrespondence_analysis.Chrn.Plot +
-#           geom_smooth(data = df_all, aes(x = date_full, y = Coord., color = Org, fill = Org), span = .75, size = 1, alpha = .2, level = .9)
-#       }
-# 
-#       Supcorrespondence_analysis.Chrn.Plot <- Supcorrespondence_analysis.Chrn.Plot +
-#         geom_hline(yintercept = 0, size = .3, colour = "grey30") +
-#         geom_vline(xintercept = df.events$Date, size = .15, colour = "red", alpha = .5) +
-#         geom_text(data = df.events, aes(x = Date, label = Label), y = (min(df_all$Coord.)), colour = "red")
-# 
-#       Supcorrespondence_analysis.Chrn.Plot <- Supcorrespondence_analysis.Chrn.Plot +
-#         theme_bw() +
-#         theme(
-#           panel.grid.major = element_blank(),
-#           panel.grid.minor = element_blank(),
-#           axis.title.x = element_blank(),
-#           plot.title = element_text(size = 10),
-#           axis.text.y = element_text(angle = 0, vjust = 0.5, hjust = 1, size = (input$textsize / 3)),
-#           plot.caption = element_text(hjust = .5)
-#           # panel.border=element_blank()
-#         ) +
-#         theme(
-#           legend.key = element_rect(fill = alpha("grey70", 0), linetype = 0), # small boxes in legend
-#           legend.position = c(1, 1), # position of legend
-#           legend.justification = c(1, 1),
-#           legend.background = element_rect(fill = alpha("white", 0.75), colour = "white"),
-#           legend.title = element_blank()
-#         ) +
-#         labs(caption = stringr::str_wrap(
-#           paste(
-#             "Plot of supplementary statements, smoothing method is loess with a confidence interval of 0.9.", " Events plotted:",
-#             paste(support_files$event_metadata$Label, support_files$event_metadata$Description, sep = " ", collapse = "; ")
-#           ), 200
-#         )) +
-#         ggtitle(paste0("Figure 2: Discursive positionalities of supplementary statements across time, principal axis ", input$axis_x, ".", sep = " ")) +
-#         scale_y_continuous(breaks = df_words$x, labels = df_words$label, name = NULL, guide = guide_axis(check.overlap = TRUE)) # n.dodge=3  guide = guide_axis(check.overlap = TRUE)
-#       # scale_y_discrete
-#       #  scale_y_continuouslabels = df_words$label, breaks = df_words$x, name = NULL, labels = df_words$label
-# 
-#       # Drawing scale on map...
-#       temp_scale <- list()
-#       temp_scale[["y.max"]] <- round(max(df_all$Coord.), 1)
-#       temp_scale[["y.min"]] <- temp_scale[["y.max"]] - .3
-#       temp_scale[["y.middle"]] <- (temp_scale[["y.min"]] + temp_scale[["y.max"]]) / 2
-#       temp_scale[["label"]] <- temp_scale[["y.max"]] - temp_scale[["y.min"]]
-#       temp_scale[["y.lower"]] <- (temp_scale[["y.min"]] + temp_scale[["y.max"]]) / 2
-#       temp_scale[["su.Date"]] <- (max(df_all$date_full) - min(df_all$date_full)) / 150
-# 
-#       Supcorrespondence_analysis.Chrn.Plot <- Supcorrespondence_analysis.Chrn.Plot +
-#         geom_segment(
-#           data = df_all, aes(
-#           x = min(date_full) - temp_scale$su.Date, y = temp_scale$y.min,
-#           xend = min(date_full) - temp_scale$su.Date, yend = temp_scale$y.max
-#         ), size = .05) +
-#         geom_segment(data = df_all, aes(
-#           x = min(date_full), y = temp_scale$y.max,
-#           xend = min(date_full) - (temp_scale$su.Date * 2), yend = temp_scale$y.max
-#         ), size = .05) +
-#         geom_segment(data = df_all, aes(
-#           x = min(date_full), y = temp_scale$y.min,
-#           xend = min(date_full) - (temp_scale$su.Date * 2), yend = temp_scale$y.min
-#         ), size = .05) +
-#         annotate("text", x = min(df_all$date_full) + (temp_scale$su.Date * 1), y = temp_scale$y.middle, label = temp_scale$label, size = (input$textsize / 7.5), alpha = .8) + # ,  hjust = .5, vjust = 1.5)
-#         annotate("text", x = min(df_all$date_full) - (temp_scale$su.Date * 3), y = temp_scale$y.middle, label = "scale", size = (input$textsize / 7.5), angle = 90, alpha = .8) # ,  hjust = .5, vjust = -.75) +
-# 
-#       Supcorrespondence_analysis.Chrn.Plot
-#     },
-#     width = 1100,
-#     height = 700,
-#     res = 100
-#   )
-#   # } , width = 2200, height = 1400, res = 200)
-# 
-#   output$click_info <- renderPrint({
-# 
-#     # creating data frame from supplementary items.
-#     df_all <- data.frame(
-#       Coord. = correspondence_analysis.sup$col.sup$coord[, input$axis_x],
-#       date_full = as.Date(unlist(lapply(rownames(correspondence_analysis.sup$col.sup$coord), function(x) {
-#         paste0(support_files$document_sup_metadata$Statement.Day[support_files$document_sup_metadata$Document == x], "/",
-#           support_files$document_sup_metadata$Statement.Month[support_files$document_sup_metadata$Document == x], "/",
-#           support_files$document_sup_metadata$Statement.Year[support_files$document_sup_metadata$Document == x],
-#           sep = ""
-#         )
-#       })), "%d/%m/%y"),
-#       Org = as.character(support_files$document_sup_metadata$Org.Abbreviation[match(rownames(correspondence_analysis.sup$col.sup$coord), support_files$document_sup_metadata$Document)])
-#     )
-# 
-#     # Making data frames for documents
-#     df_docs <- data.frame(
-#       Coord. = correspondence_analysis$col$coord[, input$axis_x],
-#       date_full = as.Date(unlist(lapply(rownames(correspondence_analysis$col$contrib), function(x) {
-#         paste0(support_files$document_metadata$Statement.Day[support_files$document_metadata$Document == x], "/",
-#           support_files$document_metadata$Statement.Month[support_files$document_metadata$Document == x], "/",
-#           support_files$document_metadata$Statement.Year[support_files$document_metadata$Document == x],
-#           sep = ""
-#         )
-#       })), "%d/%m/%y"),
-#       Org = "General"
-#     )
-# 
-#     df_all <- rbind(df_all, df_docs)
-# 
-#     # making selections in supplementary corpus by Org and Date range. NB NOT in primary corpus!
-#     df_all <- df_all[df_all$Org %in% input$SelectedOrgs, ]
-#     df_all <- df_all[df_all$date_full %in% seq(input$selectedDates[1], input$selectedDates[2], by = "days"), ]
-# 
-#     nearPoints(df_all, input$chronologicalPlot_click, addDist = TRUE)
-#   })
-# 
-#   output$brush_info <- renderPrint({
-# 
-#     # creating data frame from supplementary items.
-#     df_all <- data.frame(
-#       Coord. = correspondence_analysis.sup$col.sup$coord[, input$axis_x],
-#       date_full = as.Date(unlist(lapply(rownames(correspondence_analysis.sup$col.sup$coord), function(x) {
-#         paste0(support_files$document_sup_metadata$Statement.Day[support_files$document_sup_metadata$Document == x], "/",
-#           support_files$document_sup_metadata$Statement.Month[support_files$document_sup_metadata$Document == x], "/",
-#           support_files$document_sup_metadata$Statement.Year[support_files$document_sup_metadata$Document == x],
-#           sep = ""
-#         )
-#       })), "%d/%m/%y"),
-#       Org = as.character(support_files$document_sup_metadata$Org.Abbreviation[match(rownames(correspondence_analysis.sup$col.sup$coord), support_files$document_sup_metadata$Document)])
-#     )
-# 
-#     # Making data frames for documents
-#     df_docs <- data.frame(
-#       Coord. = correspondence_analysis$col$coord[, input$axis_x],
-#       date_full = as.Date(unlist(lapply(rownames(correspondence_analysis$col$contrib), function(x) {
-#         paste0(support_files$document_metadata$Statement.Day[support_files$document_metadata$Document == x], "/",
-#           support_files$document_metadata$Statement.Month[support_files$document_metadata$Document == x], "/",
-#           support_files$document_metadata$Statement.Year[support_files$document_metadata$Document == x],
-#           sep = ""
-#         )
-#       })), "%d/%m/%y"),
-#       Org = "General"
-#     )
-# 
-#     df_all <- rbind(df_all, df_docs)
-# 
-#     # making selections in supplementary corpus by Org and Date range. NB NOT in primary corpus!
-#     df_all <- df_all[df_all$Org %in% input$SelectedOrgs, ]
-#     df_all <- df_all[df_all$date_full %in% seq(input$selectedDates[1], input$selectedDates[2], by = "days"), ]
-# 
-#     brushedPoints(df_all, input$chronologicalPlot_brush)
-
-  }
-
-# 

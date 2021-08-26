@@ -20,176 +20,92 @@ shiny_ui <- fluidPage(
         max = 25, # nrow(correspondence_analysis$eig),
         value = 2
       ),
-      checkboxGroupInput(
-        "show_in_plots",
-        "Show in Plot:",
-        inline = "TRUE",
-        choiceNames = list(
-          "Observations", "Labels", "Interpretations", "Smoothed lines"
-        ),
-        choiceValues = list(
-          "Observations", "Labels", "Interpretations", "Smoothed lines"
-        ),
-        selected = list(
-          "Observations", "Labels", "Smoothed lines"
-        )
-      ),
-      sliderInput(
-        inputId = "textsize",
-        label = "Text size plots:",
-        min = 1,
-        max = 100,
-        value = 25
-      ),
+      h4("Options CA plot"), # CA or also cluster plot?  
       selectInput(
         inputId = "language",
-        label = "Language plots:",
+        label = "Language:",
         choices = c("English", "Arabic")
       ),
       selectInput(
         inputId = "selection_criteria",
-        label = "Labels plotted on maximum:",
+        label = "Labels included on basis of:",
         choices = c(
           "Contribution (axis X and Y)", "Contribution (axis X only)", "Inertia"
         )
       ),
       sliderInput(
         inputId = "number_words",
-        label = "Number of words:",
+        label = "Number of words plotted:",
         min = 0,
         max = nrow(correspondence_analysis$row$coord),
         value = 40
       ),
       sliderInput(
         inputId = "number_docs",
-        label = "Number of documents:",
+        label = "Number of documents plotted:",
         min = 0,
         max = nrow(correspondence_analysis$col$coord),
         value = 20
       ),
-      dateRangeInput(
-        "selected_dates",
-        "Date range:",
-        start  = "2011-03-01",
-        end = "2020-01-31",
-        min = "2010-03-01",
-        max = "2020-03-01",
-        format = "dd/mm/yyyy",
-        separator = " - "
+      sliderInput(
+        inputId = "textsize",
+        label = "Text size plot:",
+        min = 1,
+        max = 100,
+        value = 25
       )
     ),
 
     #--------- Main panel ---------####
     mainPanel(
-        #--------- Main panel: CA ---------####
-          tabsetPanel(
-            tabPanel(
-              "Corpus",
-              h3("Overview"),
-              h5("Original"),
-              tableOutput("corpus_original"),
-              h5("Culled"),
-              tableOutput("corpus_culled"),
-              # hr(),
-              # tableOutput("corpus_names"),
-              h3("Size documents culled corpus"),
-              plotOutput(
-                outputId = "histogram_plot"
-              )
+      tabsetPanel(
+        tabPanel(
+          "Corpus",
+          h3("Overview"),
+          h5("Original"),
+          tableOutput("corpus_original"),
+          h5("Culled"),
+          tableOutput("corpus_culled"),
+          # hr(),
+          # tableOutput("corpus_names"),
+          h3("Size documents culled corpus"),
+          plotOutput(
+            outputId = "histogram_plot"
+          )
+        ),
+        tabPanel(
+          "Eigenvalues",
+          h3("Eigenvalues"),
+          fluidRow(
+            column(
+              5, # Output: scatter plot
+              plotOutput(outputId = "scree_plot")
             ),
-            tabPanel(
-              "Eigenvalues",
-              h3("Eigenvalues"),
-              fluidRow(
-                column(
-                  5, # Output: scatter plot
-                  plotOutput(outputId = "scree_plot")
-                ),
-                column(
-                  7,
-                  tableOutput("table_eigenvalues")
-                )
-              )
-            ),
-            tabPanel(
-              "Table Words CA",
-              h3(
-                textOutput("selected_axis")
-              ),
-              tableOutput("table_words")
-            ),
-            tabPanel(
-              "Table Docs CA",
-              h3(
-                textOutput("selected_axis1")
-              ),
-              tableOutput("table_docs")
-            ),
-            tabPanel(
-              "CA Simultaneous representation",
-              plotOutput("scatter_plot")
+            column(
+              7,
+              tableOutput("table_eigenvalues")
             )
           )
-        ) #,
-# 
-#         #--------- Main panel: SupCA ---------####
-#         tabPanel(
-#           "Supplementary CA",
-#           br(),
-#           tabsetPanel(
-#             tabPanel(
-#               "Overview Corpora",
-#               fluidRow(
-#                 column(
-#                   5, # Output: scatter plot
-#                   h3("Original"),
-#                   tableOutput("corpus_sups")
-#                 ), ####
-#                 column(
-#                   5,
-#                   h3("Culled"),
-#                   tableOutput("corpus_sups_culled")
-#                 )
-#               )
-#             ),
-#             tabPanel(
-#               "Table Docs SupCA",
-#               h3(
-#                 textOutput("selected_axis_sups")
-#               ),
-#               tableOutput("table_suppl_docs")
-#             ),
-#             tabPanel("SupCa Simultaneous",
-#               plotOutput("scatter_plot_suppl"),
-#               height = 700
-#             ),
-#             tabPanel(
-#               "SupCa Chrononological",
-#               fluidRow(
-#                 column(
-#                   width = 12,
-#                   plotOutput(
-#                     "chronological_plot",
-#                     height = 700,
-#                     click = "chronological_plot_click",
-#                     brush = brushOpts(id = "chronological_plot_brush")
-#                   )
-#                 )
-#               ),
-#               fluidRow(
-#                 column(
-#                   width = 6,
-#                   h4("Supplementary Statements near click"),
-#                   verbatimTextOutput("click_info")
-#                 ),
-#                 column(
-#                   width = 6,
-#                   h4("Brushed Supplementary Statements"),
-#                   verbatimTextOutput("brush_info")
-#                )
-#              )
-#            )
-#          )
-#        )
+        ),
+        tabPanel(
+          "Table Words CA",
+          h3(
+            textOutput("selected_axis")
+          ),
+          tableOutput("table_words")
+        ),
+        tabPanel(
+          "Table Docs CA",
+          h3(
+            textOutput("selected_axis1")
+          ),
+          tableOutput("table_docs")
+        ),
+        tabPanel(
+          "CA Simultaneous representation",
+          plotOutput("scatter_plot")
+        )
       )
-    )
+    ) 
+  )
+)

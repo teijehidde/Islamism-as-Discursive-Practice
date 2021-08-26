@@ -50,40 +50,6 @@ stemmed_corpus <- lapply(
   }
 )
 
-stemmed_suppl_corpus <- lapply(
-  suppl_corpus, function(y) {
-    lapply(
-      y$word_lists, function(x) {
-        StemmingWords(
-          x,
-          chars = support_files$stemmed_characters
-        )
-      }
-    )
-  }
-)
-
-# [How important is the following? would like to take it out...]
-support_files[["org_names"]] <- unlist(
-  strsplit(
-    as.character(
-      support_files$organization_metadata$org_arabic
-    ), " "
-  )
-)
-
-# [How important is the following? would like to take it out...]
-support_files[["org_names_stemmed"]] <- unique(
-  sapply(
-    support_files$organization_metadata$org_arabic, function(x) {
-      StemmingWords(
-        x,
-        chars = support_files$stemmed_characters
-      )
-    }
-  )
-)
-
 mined_text <- MiningText(
   stemmed_corpus,
   v_min = 20,
