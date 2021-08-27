@@ -62,8 +62,7 @@ correspondence_analysis <- CA(
 )
 
 #----------- Presentation Data in Shiny app -----------####
-source("shiny_app_server.R")
-source("shiny_app_ui.R")
+source("shiny_app.R")
 shinyApp(shiny_ui, ShinyServer)
 
 #----------- End -----------#

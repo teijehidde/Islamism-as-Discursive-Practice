@@ -278,7 +278,6 @@ BuildTableCollocates <- function(data, word, range, meta_data) {
   
   # note that pre and post are switch because Arabic is an RTL language. 
   result <- tibble( 
-    File_name = file_name, 
     label = label_text, 
     text_post = text_post,
     word = original_word, 

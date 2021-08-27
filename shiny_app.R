@@ -1,8 +1,141 @@
+#--------- Shiny App: UI ---------####
+
+shiny_ui <- fluidPage(
+  titlePanel(
+    h2("CA Text Analysis of Syrian Opposition Statements 2011-2017", align = "center")
+  ),
+
+  #--------- Side panel ---------####
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput(
+        inputId = "axis_x",
+        label = "Axis X:",
+        min = 1,
+        max = 25, # nrow(correspondence_analysis$eig),
+        value = 1
+      ),
+      sliderInput(
+        inputId = "axis_y",
+        label = "Axis Y:",
+        min = 1,
+        max = 25, # nrow(correspondence_analysis$eig),
+        value = 2
+      ),
+      # h4("Options CA plot"), # CA or also cluster plot?
+      selectInput(
+        inputId = "language",
+        label = "Language:",
+        choices = c("English", "Arabic")
+      ),
+      selectInput(
+        inputId = "selection_criteria",
+        label = "Labels included in plot on basis of:",
+        choices = c(
+          "Contribution (axis X and Y)", "Contribution (axis X only)", "Inertia"
+        )
+      ),
+      sliderInput(
+        inputId = "number_words",
+        label = "Number of words in plot:",
+        min = 0,
+        max = nrow(correspondence_analysis$row$coord),
+        value = 40
+      ),
+      sliderInput(
+        inputId = "number_docs",
+        label = "Number of documents in plot:",
+        min = 0,
+        max = nrow(correspondence_analysis$col$coord),
+        value = 20
+      ),
+      sliderInput(
+        inputId = "textsize",
+        label = "Text size plot:",
+        min = 1,
+        max = 100,
+        value = 25
+      ),
+      selectInput(
+        inputId = "selected_word_collocates",
+        label = "Select word for collocates:",
+        choices = mined_text$v_culled_corpus
+      ),
+      sliderInput(
+        inputId = "range_collocates",
+        label = "Range collocates:",
+        min = 1,
+        max = 25,
+        value = 5
+      )
+    ),
+    # ),
+    #--------- Main panel ---------####
+    mainPanel(
+      tabsetPanel(
+        tabPanel(
+          "Corpus",
+          h3("Overview"),
+          h5("Original"),
+          tableOutput("corpus_original"),
+          h5("Culled"),
+          tableOutput("corpus_culled"),
+          h3("Included Documents"),
+          tableOutput("corpus_names"),
+          h3("Size documents culled corpus"),
+          plotOutput(
+            outputId = "histogram_plot"
+          )
+        ),
+        tabPanel(
+          "Eigenvalues",
+          h3("Eigenvalues"),
+          fluidRow(
+            column(
+              5, # Output: scatter plot
+              plotOutput(outputId = "scree_plot")
+            ),
+            column(
+              7,
+              tableOutput("table_eigenvalues")
+            )
+          )
+        ),
+        tabPanel(
+          "Table Words CA",
+          h3(
+            textOutput("selected_axis")
+          ),
+          tableOutput("table_words")
+        ),
+        tabPanel(
+          "Table Docs CA",
+          h3(
+            textOutput("selected_axis1")
+          ),
+          tableOutput("table_docs")
+        ),
+        tabPanel(
+          "CA Simultaneous representation",
+          plotOutput("scatter_plot")
+        ),
+        tabPanel(
+          "Collocates",
+          h3(
+            textOutput("selected_word")
+          ),
+          tableOutput("collocates")
+        )
+      )
+    )
+  )
+)
+
 #--------- Shiny App: Server ---------####
 
 ShinyServer <- function(input, output, session) {
 
-  #--------- corpus overview ---------#### 
+  #--------- tab: corpus overview ---------####
   output$corpus_original <- renderTable(
     {
       data.frame(
@@ -33,30 +166,58 @@ ShinyServer <- function(input, output, session) {
     digits = 0
   )
 
-  # [Because I simplified supporting files, this table is a bit more cumborsome to construct. delete? ]
-  # Table Overview Names Organizations and label documents
-  # output$corpus_names <- renderTable(
-  #  {
-  #    data.frame(
-  #      name_arab = support_files$organization_metadata$org_arabic,
-  #      name_eng = support_files$organization_metadata$org_english,
-  #      charter = support_files$document_metadata$label[
-  #        match(
-  #          support_files$organization_metadata$ $Charter, support_files$document_metadata$Document
-  #          )
-  #        ],
-  #      self_descr = support_files$document_metadata$label[
-  #        match(
-  #          support_files$organization_metadata$Who.Are.we, support_files$document_metadata$Document
-  #          )
-  #        ]
-  #    )
-  #  },
-  #  striped = TRUE,
-  #  hover = TRUE,
-  #  bordered = TRUE,
-  #  digits = 0
-  # )
+  output$corpus_names <- renderTable(
+    {
+      data_doc <- support_files$document_metadata
+      data_org <- support_files$organization_metadata
+      abbr_list <- unique(data_doc$org_abbreviated)
+      eng_org_list <- list()
+      arab_org_list <- list()
+      self_description_list <- list()
+      charter_list <- list()
+
+      for (i in 1:length(abbr_list)) {
+        self_description_list <- append(
+          self_description_list, paste0(
+            "",
+            data_doc[data_doc$org_abbreviated == abbr_list[i] & data_doc$type == "self_description", ]$label
+          )
+        )
+        charter_list <- append(
+          charter_list, paste0(
+            "",
+            data_doc[data_doc$org_abbreviated == abbr_list[i] & data_doc$type == "charter", ]$label
+          )
+        )
+        eng_org_list <- append(
+          eng_org_list, paste0(
+            "",
+            data_org[data_org$org_abbreviated == paste0(abbr_list[i]), ]$org_english
+          )
+        )
+        arab_org_list <- append(
+          arab_org_list, paste0(
+            "",
+            data_org[data_org$org_abbreviated == paste0(abbr_list[i]), ]$org_arabic
+          )
+        )
+      }
+
+      return(
+        tibble(
+          Organization_arabic = arab_org_list,
+          Organization_english = eng_org_list,
+          Self_description = self_description_list,
+          Charter = charter_list
+        )
+      )
+    },
+    striped = TRUE,
+    hover = TRUE,
+    bordered = TRUE,
+    digits = 0,
+    align = c("rlcc")
+  )
 
   output$histogram_plot <- renderPlot({
     hist(
@@ -69,43 +230,41 @@ ShinyServer <- function(input, output, session) {
       main = NULL
     )
   })
-  
-  #--------- CA eigenvalues ---------#### 
+
+  #--------- tab: CA eigenvalues ---------####
   scree_plot <- data.frame(
     variance = correspondence_analysis$eig[, 2],
     axis = seq(1:nrow(correspondence_analysis$eig))
   )
 
-  output$scree_plot <- renderPlot(
-    {
-      ggplot(
-        data = scree_plot,
-        aes(x = axis, y = variance)
+  output$scree_plot <- renderPlot({
+    ggplot(
+      data = scree_plot,
+      aes(x = axis, y = variance)
+    ) +
+      geom_point(size = 2, shape = 1) +
+      geom_line() +
+      theme_bw() +
+      guides(size = FALSE, solid = FALSE) +
+      theme(
+        panel.grid.minor = element_line(
+          linetype = "solid",
+          size = .1
+        )
       ) +
-        geom_point(size = 2, shape = 1) +
-        geom_line() +
-        theme_bw() +
-        guides(size = FALSE, solid = FALSE) +
-        theme(
-          panel.grid.minor = element_line(
-            linetype = "solid",
-            size = .1
-          )
-        ) +
-        theme(
-          panel.grid.major = element_line(
-            linetype = "solid",
-            size = .1
-          )
-        ) +
-        labs(x = "Axis", y = "Variance")
-    } 
-  )
+      theme(
+        panel.grid.major = element_line(
+          linetype = "solid",
+          size = .1
+        )
+      ) +
+      labs(x = "Axis", y = "Variance")
+  })
 
   table_eigenvalues <- data.frame(correspondence_analysis$eig[])
   colnames(table_eigenvalues) <- c("Eigenvalue", "Variance", "Cumulative")
   rownames(table_eigenvalues) <- paste0("Axis ", 1:nrow(table_eigenvalues), sep = " ")
-  
+
   output$table_eigenvalues <- renderTable(
     {
       table_eigenvalues
@@ -116,14 +275,23 @@ ShinyServer <- function(input, output, session) {
     rownames = TRUE,
     digits = 4
   )
-  
-  #--------- CA tables ---------#### 
+
+  #--------- tabs: CA tables ---------####
+  output$selected_axis <- renderText({
+    paste(
+      "Axis ", input$axis_x,
+      ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
+      "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
+      sep = ""
+    )
+  })
+
   output$table_words <- renderTable(
     {
       BuildTableWords(
-        data = mined_text, 
+        data = mined_text,
         dim_x = input$axis_x,
-        lexical_table = mined_text$lexical_table, 
+        lexical_table = mined_text$lexical_table,
         translation_list = support_files$translation_list,
         order = input$selection_criteria
       )
@@ -133,6 +301,15 @@ ShinyServer <- function(input, output, session) {
     bordered = TRUE,
     digits = 4
   )
+
+  output$selected_axis1 <- renderText({
+    paste(
+      "Axis ", input$axis_x,
+      ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
+      "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
+      sep = ""
+    )
+  })
 
   output$table_docs <- renderTable(
     {
@@ -147,11 +324,15 @@ ShinyServer <- function(input, output, session) {
     bordered = TRUE,
     digits = 4
   )
-  
-  #--------- CA plot ---------#### 
+
+  #--------- tab: CA plot ---------####
+  output$selected_plane <- renderText({
+    paste("Plane axes", input$axis_x, "-", input$axis_y, sep = " ")
+  })
+
   output$scatter_plot <- renderPlot(
     {
-      # creating data frames for plot. 
+      # creating data frames for plot.
       df_docs <- data.frame(
         label = sapply(
           rownames(correspondence_analysis$col$contrib),
@@ -190,7 +371,7 @@ ShinyServer <- function(input, output, session) {
         )
       }
 
-      # culling data frames 
+      # culling data frames
       if (input$selection_criteria == "Contribution (axis X only)") {
         df_docs_culled <- df_docs[
           order(
@@ -247,8 +428,8 @@ ShinyServer <- function(input, output, session) {
       }
       df_all <- rbind(df_docs, df_words)
       df_all_culled <- rbind(df_docs_culled, df_words_culled)
-      
-      # creating annotations and scale 
+
+      # creating annotations and scale
       df_annotate <- data.frame(
         axis_x_description = paste(
           "Axis ", input$axis_x,
@@ -267,52 +448,52 @@ ShinyServer <- function(input, output, session) {
         label_y_plus = support_files$principal_axes_metadata$plus_description[input$axis_y],
         label_y_min = support_files$principal_axes_metadata$min_description[input$axis_y]
       )
-      
+
       temp_scale <- list()
       temp_scale[["x_min"]] <- round(min(df_all$x), 1)
       temp_scale[["x_max"]] <- temp_scale[["x_min"]] + round(((max(df_all$x) - min(df_all$x)) / 10), 1)
       temp_scale[["x_middle"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
       temp_scale[["label"]] <- temp_scale[["x_max"]] - temp_scale[["x_min"]]
       temp_scale[["y_lower"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
-      
+
       # Begin plotting graph
       scatter <- ggplot(data = df_words, aes(x = x, y = y)) +
         geom_hline(yintercept = 0, size = .15) +
         geom_vline(xintercept = 0, size = .15)
 
-        scatter <- scatter +
-          geom_point(
-            data = df_words,
-            aes(x = x, y = y, colour = type, shape = type),
-            alpha = .25,
-            size = 1.5
-          ) +
-          geom_point(
-            data = df_docs,
-            aes(x = x, y = y, colour = type, shape = type),
-            alpha = .25,
-            size = 1.5
-          ) +
-          geom_text_repel(
-            data = df_all_culled,
-            aes(x = x, y = y, label = label, colour = type),
-            size = (input$textsize / 10),
-            alpha = 1, # colour = "black",
-            stat = "identity",
-            parse = FALSE,
-            box.padding = unit(0.2, "lines"),
-            point.padding = unit(1e-02, "lines"),
-            segment.color = "white", # #666666
-            segment.size = 0.0,
-            arrow = NULL,
-            force = .2,
-            max.iter = 2000,
-            nudge_x = 0,
-            nudge_y = 0,
-            na.rm = FALSE,
-            show.legend = FALSE,
-            inherit.aes = FALSE
-          )
+      scatter <- scatter +
+        geom_point(
+          data = df_words,
+          aes(x = x, y = y, colour = type, shape = type),
+          alpha = .25,
+          size = 1.5
+        ) +
+        geom_point(
+          data = df_docs,
+          aes(x = x, y = y, colour = type, shape = type),
+          alpha = .25,
+          size = 1.5
+        ) +
+        geom_text_repel(
+          data = df_all_culled,
+          aes(x = x, y = y, label = label, colour = type),
+          size = (input$textsize / 10),
+          alpha = 1, # colour = "black",
+          stat = "identity",
+          parse = FALSE,
+          box.padding = unit(0.2, "lines"),
+          point.padding = unit(1e-02, "lines"),
+          segment.color = "white", # #666666
+          segment.size = 0.0,
+          arrow = NULL,
+          force = .2,
+          max.iter = 2000,
+          nudge_x = 0,
+          nudge_y = 0,
+          na.rm = FALSE,
+          show.legend = FALSE,
+          inherit.aes = FALSE
+        )
 
       # Layout
       scatter <- scatter +
@@ -357,8 +538,8 @@ ShinyServer <- function(input, output, session) {
           sep = ""
         ) +
         coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE)
-      
-      # adding annotations and scale to plot.  
+
+      # adding annotations and scale to plot.
       scatter <- scatter +
         geom_segment(
           data = df_all, aes(
@@ -426,60 +607,31 @@ ShinyServer <- function(input, output, session) {
       # printing plot
       scatter
     },
-    width = 750, height = 750, res = 100
-  ) 
-  
-  #--------- collocates ---------#### 
-  
-  # [This is something I can actually add to the app a little later on.] 
-  output$collocates <- renderTable(
-    {
-      BuildTableCollocates(
-        data = mined_text, 
-        word = input$selected_word_collocates, 
-        range = input$range_collocates, 
-        meta_data = support_files$document_metadata
-        )
-    },
-    striped = TRUE,
-    hover = TRUE,
-    bordered = TRUE, 
-    rownames = TRUE, 
-    align = c('lllrcl')
+    width = 750,
+    height = 750,
+    res = 100
   )
-  
-  #--------- dynamic text rendering for app ---------#### 
-  output$selected_axis <- renderText({
-    paste(
-      "Axis ", input$axis_x,
-      ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
-      "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
-      sep = ""
-    )
-  })
 
-  output$selected_axis1 <- renderText({
-    paste(
-      "Axis ", input$axis_x,
-      ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
-      "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
-      sep = ""
-    )
-  })
-
-  output$selected_plane <- renderText({
-    paste("Plane axes", input$axis_x, "-", input$axis_y, sep = " ")
-  })
-  
+  #--------- tab: collocates ---------####
   output$selected_word <- renderText({
     paste("Collocates for: ", input$selected_word_collocates, sep = " ")
   })
 
-
-
-
-  
+  output$collocates <- renderTable(
+    {
+      BuildTableCollocates(
+        data = mined_text,
+        word = input$selected_word_collocates,
+        range = input$range_collocates,
+        meta_data = support_files$document_metadata
+      )
+    },
+    striped = TRUE,
+    hover = TRUE,
+    bordered = TRUE,
+    rownames = TRUE,
+    align = c("llrcl")
+  )
 }
 
-# -------------- End --------- #### 
-
+# -------------- End --------- ####
