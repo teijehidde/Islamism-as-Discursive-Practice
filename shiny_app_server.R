@@ -1,141 +1,17 @@
-#--------- Shiny App: UI ---------####
-
-shiny_ui <- fluidPage(
-  titlePanel(
-    h2("CA Text Analysis of Syrian Opposition Statements 2011-2017", align = "center")
-  ),
-
-  #--------- Side panel ---------####
-  sidebarLayout(
-    sidebarPanel(
-      sliderInput(
-        inputId = "axis_x",
-        label = "Axis X:",
-        min = 1,
-        max = 25, # nrow(correspondence_analysis$eig),
-        value = 1
-      ),
-      sliderInput(
-        inputId = "axis_y",
-        label = "Axis Y:",
-        min = 1,
-        max = 25, # nrow(correspondence_analysis$eig),
-        value = 2
-      ),
-      # h4("Options CA plot"), # CA or also cluster plot?
-      selectInput(
-        inputId = "language",
-        label = "Language:",
-        choices = c("English", "Arabic")
-      ),
-      selectInput(
-        inputId = "selection_criteria",
-        label = "Labels included in plot on basis of:",
-        choices = c(
-          "Contribution (axis X and Y)", "Contribution (axis X only)", "Inertia"
-        )
-      ),
-      sliderInput(
-        inputId = "number_words",
-        label = "Number of words in plot:",
-        min = 0,
-        max = nrow(correspondence_analysis$row$coord),
-        value = 40
-      ),
-      sliderInput(
-        inputId = "number_docs",
-        label = "Number of documents in plot:",
-        min = 0,
-        max = nrow(correspondence_analysis$col$coord),
-        value = 20
-      ),
-      sliderInput(
-        inputId = "textsize",
-        label = "Text size plot:",
-        min = 1,
-        max = 100,
-        value = 25
-      ),
-      selectInput(
-        inputId = "selected_word_collocates",
-        label = "Select word for collocates:",
-        choices = mined_text$v_culled_corpus
-      ),
-      sliderInput(
-        inputId = "range_collocates",
-        label = "Range collocates:",
-        min = 1,
-        max = 25,
-        value = 5
-      )
-    ),
-    # ),
-    #--------- Main panel ---------####
-    mainPanel(
-      tabsetPanel(
-        tabPanel(
-          "Corpus",
-          h3("Overview"),
-          h5("Original"),
-          tableOutput("corpus_original"),
-          h5("Culled"),
-          tableOutput("corpus_culled"),
-          h3("Included Documents"),
-          tableOutput("corpus_names"),
-          h3("Size documents culled corpus"),
-          plotOutput(
-            outputId = "histogram_plot"
-          )
-        ),
-        tabPanel(
-          "Eigenvalues",
-          h3("Eigenvalues"),
-          fluidRow(
-            column(
-              5, # Output: scatter plot
-              plotOutput(outputId = "scree_plot")
-            ),
-            column(
-              7,
-              tableOutput("table_eigenvalues")
-            )
-          )
-        ),
-        tabPanel(
-          "Table Words CA",
-          h3(
-            textOutput("selected_axis")
-          ),
-          tableOutput("table_words")
-        ),
-        tabPanel(
-          "Table Docs CA",
-          h3(
-            textOutput("selected_axis1")
-          ),
-          tableOutput("table_docs")
-        ),
-        tabPanel(
-          "CA Simultaneous representation",
-          plotOutput("scatter_plot")
-        ),
-        tabPanel(
-          "Collocates",
-          h3(
-            textOutput("selected_word")
-          ),
-          tableOutput("collocates")
-        )
-      )
-    )
-  )
-)
 
 #--------- Shiny App: Server ---------####
 
 ShinyServer <- function(input, output, session) {
-
-  #--------- tab: corpus overview ---------####
+  
+  #--------- Tab: corpus ---------#### 
+  culled_lexical_table <- reactive({
+    CullingMinedText(
+      data = mined_text, 
+      culled_words = c(as.character(support_files$tool_words[, 1])),
+      v_min = input$v_min
+    )
+  }) 
+  
   output$corpus_original <- renderTable(
     {
       data.frame(
@@ -150,14 +26,14 @@ ShinyServer <- function(input, output, session) {
     bordered = TRUE,
     digits = 0
   )
-
+  
   output$corpus_culled <- renderTable(
     {
       data.frame(
         documents = length(corpus$file_names),
-        number_occurences_t = sum(mined_text$lexical_table),
-        number_words_v = length(mined_text$v_culled_corpus),
-        avg_t_per_v = sum(mined_text$lexical_table) / length(mined_text$v_culled_corpus)
+        number_occurences_t = sum(culled_lexical_table()),  
+        number_words_v = nrow(culled_lexical_table()),
+        avg_t_per_v = sum(culled_lexical_table()) / nrow(culled_lexical_table())
       )
     },
     striped = TRUE,
@@ -165,7 +41,7 @@ ShinyServer <- function(input, output, session) {
     bordered = TRUE,
     digits = 0
   )
-
+  
   output$corpus_names <- renderTable(
     {
       data_doc <- support_files$document_metadata
@@ -175,7 +51,7 @@ ShinyServer <- function(input, output, session) {
       arab_org_list <- list()
       self_description_list <- list()
       charter_list <- list()
-
+      
       for (i in 1:length(abbr_list)) {
         self_description_list <- append(
           self_description_list, paste0(
@@ -202,7 +78,7 @@ ShinyServer <- function(input, output, session) {
           )
         )
       }
-
+      
       return(
         tibble(
           Organization_arabic = arab_org_list,
@@ -218,7 +94,7 @@ ShinyServer <- function(input, output, session) {
     digits = 0,
     align = c("rlcc")
   )
-
+  
   output$histogram_plot <- renderPlot({
     hist(
       colSums(
@@ -230,45 +106,87 @@ ShinyServer <- function(input, output, session) {
       main = NULL
     )
   })
-
-  #--------- tab: CA eigenvalues ---------####
-  scree_plot <- data.frame(
-    variance = correspondence_analysis$eig[, 2],
-    axis = seq(1:nrow(correspondence_analysis$eig))
-  )
-
-  output$scree_plot <- renderPlot({
-    ggplot(
-      data = scree_plot,
-      aes(x = axis, y = variance)
-    ) +
-      geom_point(size = 2, shape = 1) +
-      geom_line() +
-      theme_bw() +
-      guides(size = FALSE, solid = FALSE) +
-      theme(
-        panel.grid.minor = element_line(
-          linetype = "solid",
-          size = .1
-        )
-      ) +
-      theme(
-        panel.grid.major = element_line(
-          linetype = "solid",
-          size = .1
-        )
-      ) +
-      labs(x = "Axis", y = "Variance")
+  
+  #--------- tab: collocates ---------####
+  output$options_words <-renderUI({
+    options <- mined_text$v_corpus[
+      as.integer(rownames(culled_lexical_table()))
+    ]
+    selectInput(
+      inputId = "selected_word_collocates",
+      label = "Select word for collocates:",
+      choices = options
+    )
   })
-
-  table_eigenvalues <- data.frame(correspondence_analysis$eig[])
-  colnames(table_eigenvalues) <- c("Eigenvalue", "Variance", "Cumulative")
-  rownames(table_eigenvalues) <- paste0("Axis ", 1:nrow(table_eigenvalues), sep = " ")
+  
+  output$selected_word <- renderText({
+    paste("Collocates for: ", input$selected_word_collocates, sep = " ")
+  })
+  
+  output$collocates <- renderTable(
+    {
+      BuildTableCollocates(
+        data = mined_text,
+        word = input$selected_word_collocates,
+        range_pre = input$range_pre,
+        range_post = input$range_post,
+        meta_data = support_files$document_metadata
+      )
+    },
+    striped = TRUE,
+    hover = TRUE,
+    bordered = TRUE,
+    rownames = TRUE,
+    align = c("llrcl")
+  )
+  
+  #--------- Tab: Correspondence Analysis ---------####
+  cor_an <- reactive(
+    {
+      CA(
+        culled_lexical_table(),
+        ncp = NULL,
+        row.sup = NULL,
+        col.sup = NULL,
+        quanti.sup = NULL,
+        quali.sup = NULL,
+        graph = FALSE,
+        row.w = NULL
+        )
+      }
+  )
+  
+  output$scree_plot <- renderPlot({
+      ggplot(
+        data = data.frame(
+          variance = cor_an()$eig[, 2],
+          axis = seq(1:nrow(cor_an()$eig))
+          ),
+          aes(x = axis, y = variance)
+          ) +
+          geom_point(size = 2, shape = 1) +
+          geom_line() +
+          theme_bw() +
+          guides(size = FALSE, solid = FALSE) +
+          theme(
+            panel.grid.minor = element_line(
+              linetype = "solid",
+              size = .1
+            )
+          ) +
+          theme(
+            panel.grid.major = element_line(
+              linetype = "solid",
+              size = .1
+            )
+          ) +
+          labs(x = "Axis", y = "Variance")
+    })
 
   output$table_eigenvalues <- renderTable(
-    {
-      table_eigenvalues
-    },
+     {
+       data.frame(cor_an()$eig[])
+     },
     striped = TRUE,
     hover = TRUE,
     bordered = TRUE,
@@ -276,22 +194,21 @@ ShinyServer <- function(input, output, session) {
     digits = 4
   )
 
-  #--------- tabs: CA tables ---------####
   output$selected_axis <- renderText({
-    paste(
-      "Axis ", input$axis_x,
-      ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
-      "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
-      sep = ""
-    )
+   paste(
+     "Axis ", input$axis_x,
+     ", λ = ", round(cor_an()$eig[input$axis_x, 1], 2),
+     "; var. = ", round(cor_an()$eig[input$axis_x, 2], 2), "%",
+     sep = ""
+     )
   })
-
+   
   output$table_words <- renderTable(
     {
       BuildTableWords(
         data = mined_text,
+        ca_analysis = cor_an(),
         dim_x = input$axis_x,
-        lexical_table = mined_text$lexical_table,
         translation_list = support_files$translation_list,
         order = input$selection_criteria
       )
@@ -303,17 +220,18 @@ ShinyServer <- function(input, output, session) {
   )
 
   output$selected_axis1 <- renderText({
-    paste(
-      "Axis ", input$axis_x,
-      ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
-      "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
-      sep = ""
-    )
+   paste(
+     "Axis ", input$axis_x,
+     ", λ = ", round(cor_an()$eig[input$axis_x, 1], 2),
+     "; var. = ", round(cor_an()$eig[input$axis_x, 2], 2), "%",
+     sep = ""
+   )
   })
-
+   
   output$table_docs <- renderTable(
     {
       BuildTableDocs(
+        ca_analysis = cor_an(),
         dim_x = input$axis_x,
         corpus_metadata = support_files$document_metadata,
         order = input$selection_criteria
@@ -324,26 +242,21 @@ ShinyServer <- function(input, output, session) {
     bordered = TRUE,
     digits = 4
   )
-
-  #--------- tab: CA plot ---------####
-  output$selected_plane <- renderText({
-    paste("Plane axes", input$axis_x, "-", input$axis_y, sep = " ")
-  })
-
+  
   output$scatter_plot <- renderPlot(
     {
       # creating data frames for plot.
       df_docs <- data.frame(
         label = sapply(
-          rownames(correspondence_analysis$col$contrib),
+          rownames(cor_an()$col$contrib),
           function(x) {
             support_files$document_metadata$label[
               support_files$document_metadata$file_name == x
             ]
           }
         ),
-        x = correspondence_analysis$col$coord[, input$axis_x],
-        y = correspondence_analysis$col$coord[, input$axis_y],
+        x = cor_an()$col$coord[, input$axis_x],
+        y = cor_an()$col$coord[, input$axis_y],
         type = "statement"
       )
 
@@ -351,22 +264,22 @@ ShinyServer <- function(input, output, session) {
         df_words <- data.frame(
           label = support_files$translation_list[
             match(
-              mined_text$v_culled_corpus[
-                as.numeric(rownames(mined_text$lexical_table))
+              mined_text$v_corpus[
+                as.numeric(rownames(culled_lexical_table()))
               ], support_files$translation_list$word
             ), 2
           ],
-          x = correspondence_analysis$row$coord[, input$axis_x],
-          y = correspondence_analysis$row$coord[, input$axis_y],
+          x = cor_an()$row$coord[, input$axis_x],
+          y = cor_an()$row$coord[, input$axis_y],
           type = "word"
         )
       } else {
         df_words <- data.frame(
-          label = mined_text$v_culled_corpus[
-            as.numeric(rownames(mined_text$lexical_table))
+          label = mined_text$v_corpus[
+            as.numeric(rownames(culled_lexical_table()))
           ],
-          x = correspondence_analysis$row$coord[, input$axis_x],
-          y = correspondence_analysis$row$coord[, input$axis_y],
+          x = cor_an()$row$coord[, input$axis_x],
+          y = cor_an()$row$coord[, input$axis_y],
           type = "word"
         )
       }
@@ -375,7 +288,7 @@ ShinyServer <- function(input, output, session) {
       if (input$selection_criteria == "Contribution (axis X only)") {
         df_docs_culled <- df_docs[
           order(
-            correspondence_analysis$col$contrib[, input$axis_x],
+            cor_an()$col$contrib[, input$axis_x],
             decreasing = TRUE
           )[
             0:input$number_docs
@@ -383,7 +296,7 @@ ShinyServer <- function(input, output, session) {
         ]
         df_words_culled <- df_words[
           order(
-            correspondence_analysis$row$contrib[, input$axis_x],
+            cor_an()$row$contrib[, input$axis_x],
             decreasing = TRUE
           )[
             0:input$number_words
@@ -393,7 +306,7 @@ ShinyServer <- function(input, output, session) {
       if (input$selection_criteria == "Contribution (axis X and Y)") {
         df_docs_culled <- df_docs[
           order(
-            (correspondence_analysis$col$contrib[, input$axis_x] + correspondence_analysis$col$contrib[, input$axis_y]),
+            (cor_an()$col$contrib[, input$axis_x] + cor_an()$col$contrib[, input$axis_y]),
             decreasing = TRUE
           )[
             0:input$number_docs
@@ -401,7 +314,7 @@ ShinyServer <- function(input, output, session) {
         ]
         df_words_culled <- df_words[
           order(
-            (correspondence_analysis$row$contrib[, input$axis_x] + correspondence_analysis$row$contrib[, input$axis_y]),
+            (cor_an()$row$contrib[, input$axis_x] + cor_an()$row$contrib[, input$axis_y]),
             decreasing = TRUE
           )[
             0:input$number_words
@@ -411,7 +324,7 @@ ShinyServer <- function(input, output, session) {
       if (input$selection_criteria == "Inertia") {
         df_docs_culled <- df_docs[
           order(
-            correspondence_analysis$call$marge.col,
+            cor_an()$call$marge.col,
             decreasing = TRUE
           )[
             0:input$number_docs
@@ -419,7 +332,7 @@ ShinyServer <- function(input, output, session) {
         ]
         df_words_culled <- df_words[
           order(
-            correspondence_analysis$call$marge.row,
+            cor_an()$call$marge.row,
             decreasing = TRUE
           )[
             0:input$number_words
@@ -433,20 +346,16 @@ ShinyServer <- function(input, output, session) {
       df_annotate <- data.frame(
         axis_x_description = paste(
           "Axis ", input$axis_x,
-          ", λ = ", round(correspondence_analysis$eig[input$axis_x, 1], 2),
-          "; var. = ", round(correspondence_analysis$eig[input$axis_x, 2], 2), "%",
+          ", λ = ", round(cor_an()$eig[input$axis_x, 1], 2),
+          "; var. = ", round(cor_an()$eig[input$axis_x, 2], 2), "%",
           sep = ""
         ),
         axis_y_description = paste(
           "Axis ", input$axis_y,
-          ", λ = ", round(correspondence_analysis$eig[input$axis_y, 1], 2),
-          "; var. = ", round(correspondence_analysis$eig[input$axis_y, 2], 2), "%",
+          ", λ = ", round(cor_an()$eig[input$axis_y, 1], 2),
+          "; var. = ", round(cor_an()$eig[input$axis_y, 2], 2), "%",
           sep = ""
-        ),
-        label_x_plus = support_files$principal_axes_metadata$plus_description[input$axis_x],
-        label_x_min = support_files$principal_axes_metadata$min_description[input$axis_x],
-        label_y_plus = support_files$principal_axes_metadata$plus_description[input$axis_y],
-        label_y_min = support_files$principal_axes_metadata$min_description[input$axis_y]
+        )
       )
 
       temp_scale <- list()
@@ -520,10 +429,10 @@ ShinyServer <- function(input, output, session) {
         labs(x = "", y = "") +
         ggtitle(
           paste0("Figure 1: Discursive space of the Syrian conflict, principal plane ",
-            input$axis_x,
-            "-",
-            input$axis_y,
-            sep = ""
+                 input$axis_x,
+                 "-",
+                 input$axis_y,
+                 sep = ""
           )
         ) +
         labs(
@@ -538,8 +447,8 @@ ShinyServer <- function(input, output, session) {
           sep = ""
         ) +
         coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE)
-
-      # adding annotations and scale to plot.
+      # 
+      # # adding annotations and scale to plot.
       scatter <- scatter +
         geom_segment(
           data = df_all, aes(
@@ -566,42 +475,42 @@ ShinyServer <- function(input, output, session) {
           ), size = .15
         ) +
         annotate("text",
-          x = temp_scale$x_middle,
-          y = max(df_all$y),
-          label = temp_scale$label,
-          size = (input$textsize / 10),
-          alpha = .8,
-          hjust = .5,
-          vjust = 1.5
+                 x = temp_scale$x_middle,
+                 y = max(df_all$y),
+                 label = temp_scale$label,
+                 size = (input$textsize / 10),
+                 alpha = .8,
+                 hjust = .5,
+                 vjust = 1.5
         ) +
         annotate("text",
-          x = temp_scale$x_middle,
-          y = max(df_all$y),
-          label = "scale",
-          size = (input$textsize / 10),
-          alpha = .8,
-          hjust = .5,
-          vjust = -.75
-        ) +
+                 x = temp_scale$x_middle,
+                 y = max(df_all$y),
+                 label = "scale",
+                 size = (input$textsize / 10),
+                 alpha = .8,
+                 hjust = .5,
+                 vjust = -.75
+        ) + 
         # Description amount variance
         annotate("text",
-          x = max(df_all$x),
-          y = 0,
-          label = df_annotate$axis_x_description,
-          size = (input$textsize / 10),
-          alpha = .8,
-          hjust = 1,
-          vjust = -1
+                 x = max(df_all$x),
+                 y = 0,
+                 label = df_annotate$axis_x_description,
+                 size = (input$textsize / 10),
+                 alpha = .8,
+                 hjust = 1,
+                 vjust = -1
         ) +
         annotate("text",
-          x = 0,
-          y = max(df_all$y),
-          label = df_annotate$axis_y_description,
-          size = (input$textsize / 10),
-          alpha = .8,
-          hjust = 1,
-          vjust = -1,
-          angle = 90
+                 x = 0,
+                 y = max(df_all$y),
+                 label = df_annotate$axis_y_description,
+                 size = (input$textsize / 10),
+                 alpha = .8,
+                 hjust = 1,
+                 vjust = -1,
+                 angle = 90
         )
 
       # printing plot
@@ -611,27 +520,142 @@ ShinyServer <- function(input, output, session) {
     height = 750,
     res = 100
   )
-
-  #--------- tab: collocates ---------####
-  output$selected_word <- renderText({
-    paste("Collocates for: ", input$selected_word_collocates, sep = " ")
-  })
-
-  output$collocates <- renderTable(
+  
+  #--------- Tab: Hierarchical Clustering ---------####
+  hi_clus <- reactive(
     {
-      BuildTableCollocates(
-        data = mined_text,
-        word = input$selected_word_collocates,
-        range = input$range_collocates,
-        meta_data = support_files$document_metadata
+      HCPC(
+        cor_an(), 
+        metric = input$cluster_method, # "manhattan", # metric = "euclidean" and "manhattan". 
+        nb.clust = input$nb_clust, 
+        order = TRUE, 
+        graph = FALSE
       )
-    },
-    striped = TRUE,
-    hover = TRUE,
-    bordered = TRUE,
-    rownames = TRUE,
-    align = c("llrcl")
+    }
+  ) 
+  
+  output$select_cluster <-renderUI(
+    {
+      max_cluster <- length(hi_clus()$desc.var)
+      selectInput(
+        inputId = "selected_cluster",
+        label = "Select cluster:",
+        choices = c(1:max_cluster)
+        )
+      }
   )
-}
+  
+  output$select_narrative <-renderUI(
+    {
+      selectInput(
+        inputId = "selected_text",
+        label = "Select text:",
+        choices = rownames(
+          hi_clus()$desc.var[[
+            input$selected_cluster
+            ]]
+          ) 
+      )
+    }
+  )
+  
+  output$dendroPlot <- renderPlot(
+    {
+      par(cex=(input$textsize / 35)) # to reduce textsize in plot. 
+      plot.HCPC(
+        hi_clus(), 
+        choice = "tree", 
+        tree.barplot = FALSE, 
+        title = ""
+        )
+      par(cex=1) 
+  }, height = 700)
+  
+  #### TESTING  ####
+   # culled_lexical_table <-
+   #   CullingMinedText(
+   #     data = mined_text,
+   #     culled_words = c(as.character(support_files$tool_words[, 1])),
+   #     v_min = 20
+   #   )
+   # 
+   # cor_an <- CA(
+   #   culled_lexical_table,
+   #   ncp = NULL,
+   #   row.sup = NULL,
+   #   col.sup = NULL,
+   #   quanti.sup = NULL,
+   #   quali.sup = NULL,
+   #   graph = FALSE,
+   #   row.w = NULL
+   # )
+   # 
+   # hi_clus <- HCPC(
+   #   cor_an,
+   #   metric = "manhattan", # "manhattan", # metric = "euclidean" and "manhattan".
+   #   nb.clust = 3,
+   #   order = TRUE,
+   #   graph = FALSE
+   # )
+   #### TESTING  ####
+   
+   output$selected_cluster_words <- renderText({ 
+     paste("Cluster ", input$selected_cluster, sep = " ")
+   })
+   
+   output$selected_cluster_docs <- renderText({ 
+     paste("Cluster ", input$selected_cluster, sep = " ")
+   })
+   
+   output$selected_cluster_axes <- renderText({ 
+     paste("Cluster ", input$selected_cluster, sep = " ")
+   })
+   
+   output$table_cluster_words <- renderTable(
+     {
+       table <- (hi_clus()$desc.ind$dist[[input$selected_cluster]])
+       names(table) <- mined_text$v_corpus[
+         as.integer(names(table)) 
+         ]
+       return (t(table))
+     },
+     striped = TRUE,
+     hover = TRUE,
+     bordered = TRUE,
+     digits = 6
+   )
+   
+   output$table_cluster_docs <- renderTable(
+     {
+       hi_clus()$desc.var[[input$selected_cluster]]
+     },
+     striped = TRUE,
+     hover = TRUE,
+     bordered = TRUE,
+     rownames = TRUE, 
+     digits = 6
+   )
+   
+   output$table_cluster_axes <- renderTable(
+      {
+        hi_clus()$desc.axes[2][1]$quanti[[input$selected_cluster]]
+      },
+     striped = TRUE,
+     hover = TRUE,
+     bordered = TRUE,
+     rownames = TRUE, 
+     digits = 6
+   )
+  
+
+   
+   # hi_clus$desc.var
+  
+   # rownames(hi_clus$desc.var[[3]])
+  
+  #### TESTING ####
+  
+} 
+
 
 # -------------- End --------- ####

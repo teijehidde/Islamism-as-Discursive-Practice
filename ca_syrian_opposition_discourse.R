@@ -8,9 +8,20 @@
 # These exceptions are in line with google approach (see: https://google.github.io/styleguide/Rguide.html) and close to coding in Python.
 # For other bits, everything according to tidyverse approach. See: https://style.tidyverse.org/syntax.html
 #
+# NB 2: 
+# I am rewriting this app as showcase of different methods for complexity reduction on an (Arabic) corpus. 
+# This also means that culling of corpus needs to be dynamic (as different methods will work better at different TDM densities..)! 
+# Methods I would like to apply: 
+# 1: Collocations - Cosin? /  
+# 2: Clustering - K-means 
+# 3: CA (possibly with clustering added in the end) - scaling 
+# 4: Linguistic networks of some sort? 
+# 5: T-SNE - iterative scaling 
+# install.packages("quanteda.textmodels") 
 
 #----------- Config -----------####
-list_of_packages <- c("FactoMineR", "dplyr", "ggplot2", "ggpubr", "shiny", "ggrepel", "ggdendro", "gridExtra", "english")
+# install.packages("data.table")
+list_of_packages <- c("FactoMineR", "dplyr", "ggplot2", "ggpubr", "shiny", "ggrepel", "ggdendro", "gridExtra", "english", "data.table")
 invisible(lapply(list_of_packages, require, character.only = TRUE))
 setwd("/home/teijehidde/Documents/Git Blog and Coding/Islamism as Discursive Practice (Correspondence Analysis and Text Analysis)")
 source("functions.R")
@@ -43,26 +54,15 @@ names(support_files) <- gsub(
 mined_text <- MiningText(
   corpus, 
   stemming_fun = StemmingWords,
-  drop_chars = support_files$stemmed_characters, 
-  drop_punctuation = TRUE,
-  drop_words = c(as.character(support_files$tool_words[, 1])),
-  v_min = 20
+  drop_chars = support_files$stemmed_characters,
+  drop_latin = TRUE,
+  drop_digit = TRUE,
+  drop_punctuation = TRUE
 )
 
-#----------- (Supplementary) Correspondence Analysis -----------####
-correspondence_analysis <- CA(
-  mined_text$lexical_table,
-  ncp = NULL,
-  row.sup = NULL,
-  col.sup = NULL,
-  quanti.sup = NULL,
-  quali.sup = NULL,
-  graph = FALSE,
-  row.w = NULL
-)
-
-#----------- Presentation Data in Shiny app -----------####
-source("shiny_app.R")
+#----------- Dynamic Data Analysis in Shiny app -----------####
+source("shiny_app_ui.R")
+source("shiny_app_server.R")
 shinyApp(shiny_ui, ShinyServer)
 
 #----------- End -----------#

@@ -55,7 +55,7 @@ StemmingWords <- function(x,
   return(x)
 }
 
-MiningText <- function(corpus, drop_words = NULL, v_min, stemming_fun = StemmingWords, ... ) { # corpus should be list of text factors per part.
+MiningText <- function(corpus, stemming_fun = StemmingWords, ... ) { # corpus should be list of text factors per part.
 
   y <- list()
   
@@ -65,7 +65,7 @@ MiningText <- function(corpus, drop_words = NULL, v_min, stemming_fun = Stemming
     }
   )
   
-  y[["index"]] <- list()
+  y[["index_documents"]] <- list()
   y$index[["file_names"]] <- names(y$original_texts_list)
   for (i in 1:length(y$original_texts_list)) {
     y$index[["end"]][[i]] <- length(unlist(y$original_texts_list[1:i]))
@@ -86,29 +86,9 @@ MiningText <- function(corpus, drop_words = NULL, v_min, stemming_fun = Stemming
   
   y[["vi_frequency_words"]] <- table(y$t_stemmed_corpus)
   y[["v_corpus"]] <- unique(y$t_stemmed_corpus)
-  y[["v_culled_corpus"]] <- names(
-    y$vi_frequency_words[y$vi_frequency_words > v_min]
-  )
-  y[["v_culled_corpus"]] <- y$v_culled_corpus[!(y$v_culled_corpus %in% drop_words)]
-  y[["v_culled_corpus"]] <- y$v_culled_corpus[!(y$v_culled_corpus == "")]
-
-  y[["hierachical_index"]] <- lapply(
-    y$v_culled_corpus, function(x) {
-      as.vector(
-        which(
-          y$t_stemmed_corpus == x
-        )
-      )
-    }
-  )
-  names(y$hierachical_index) <- y$v_culled_corpus
-  y$hierachical_index <- y$hierachical_index[
-    order(
-      sapply(
-        y$hierachical_index, function(x) length(x)
-      )
-    )
-  ]
+  
+  y[["hierachical_index"]] <- as.data.table(y$t_stemmed_corpus)[, list(list(.I)), by = y$t_stemmed_corpus]
+  y$hierachical_index <- setattr(y$hierachical_index$V1, 'names', y$hierachical_index$y)
 
   y[["segmented_hi"]] <- lapply(
      1:length(y$original_texts_list),
@@ -116,7 +96,7 @@ MiningText <- function(corpus, drop_words = NULL, v_min, stemming_fun = Stemming
        as.data.frame(
          table(
            match(
-             y$t_stemmed_corpus[y$index$start[z]:y$index$end[z]], y$v_culled_corpus
+             y$t_stemmed_corpus[y$index$start[z]:y$index$end[z]], y$v_corpus
            )
          )
        )
@@ -127,7 +107,7 @@ MiningText <- function(corpus, drop_words = NULL, v_min, stemming_fun = Stemming
   y[["lexical_table"]] <- suppressWarnings(Reduce(
     function(...) full_join(..., by = "Var1"), y$segmented_hi
   ))
-  rownames(y$lexical_table) <- y$lexical_table$Var1 # y$v_culled_corpus #[y$lexical_table$Var1] NB! THIS IS A BUG IN R, RTL LANGUAGE MIX UP.
+  rownames(y$lexical_table) <- y$lexical_table$Var1 # y$v_corpus #[y$lexical_table$Var1] NB! THIS IS A BUG IN R, RTL LANGUAGE MIX UP.
   y$lexical_table <- y$lexical_table[, !(names(y$lexical_table) == "Var1")]
   colnames(y$lexical_table) <- y$index$file_names
   y$lexical_table[is.na(y$lexical_table)] <- 0
@@ -135,41 +115,63 @@ MiningText <- function(corpus, drop_words = NULL, v_min, stemming_fun = Stemming
   return(y)
 }
 
+# data = mined_text
+# culled_words = c(as.character(support_files$tool_words[, 1]))
+# v_min = 20
+
+CullingMinedText <- function(data, culled_words = NULL, v_min) {
+  # not implemented yet: culled hierarchical_index, culled segmented_hi. 
+  
+  y <- list()
+  
+  y[["culled_words"]] <- append(
+    culled_words, names(
+      data$vi_frequency_words[data$vi_frequency_words < v_min]
+      )
+    )
+  
+  # y[["v_corpus"]] <- data$v_corpus[!(data$v_corpus %in% y$culled_words)]
+  # y[["v_corpus"]] <- y$v_corpus[!(y$v_corpus == "")]
+  
+  y[["lexical_table"]] <- data$lexical_table[!(data$v_corpus %in% y$culled_words), ]
+  y[["lexical_table"]] <- y$lexical_table[colSums(y$lexical_table) != 0]
+  
+  return (y$lexical_table )
+  }
 
 #----------- Functions Presentation Results  -----------####
-BuildTableWords <- function(data, dim_x, dim_y, dim_z, lexical_table, translation_list, order) {
+BuildTableWords <- function(data, ca_analysis, dim_x, translation_list, order) {
+  
   table <- data.frame(
-    Words = data$v_culled_corpus[
-      as.numeric(rownames(data$lexical_table))
+    Words = data$v_corpus[
+      as.integer(rownames(ca_analysis$call$X))
       ],
-    Rel_Wt = correspondence_analysis$call$marge.row,
-    Inertia = correspondence_analysis$row$inertia,
-    Coord_X = correspondence_analysis$row$coord[, dim_x], 
-    Contr_X = correspondence_analysis$row$contrib[, dim_x], 
-    Cos2_X = correspondence_analysis$row$cos2[, dim_x]
+    Rel_Wt = ca_analysis$call$marge.row,
+    Inertia = ca_analysis$row$inertia,
+    Coord_X = ca_analysis$row$coord[, dim_x], 
+    Contr_X = ca_analysis$row$contrib[, dim_x], 
+    Cos2_X = ca_analysis$row$cos2[, dim_x]
   )
 
   table[["Translation"]] <- support_files$translation_list[
      match(
-       data$v_culled_corpus[
-         as.numeric(rownames(data$lexical_table))
-         ], support_files$translation_list$word
+       table$Words, support_files$translation_list$word
        ), 2
      ]
   
-  freq.temp <- data.frame(
-     words = data$v_culled_corpus[
-       as.numeric(rownames(data$lexical_table))
-     ],
-     freq = rowSums(data$lexical_table)
-   )
-   
-  table[["Freq"]] <- as.character(
-     freq.temp[
-       match(table$Words, freq.temp$words
-             ), 2
-       ]
-     )
+  # freq.temp <- data.frame(
+  #    words = data$v_culled_corpus[
+  #      as.numeric(rownames(data$lexical_table))
+  #    ],
+  #    freq = rowSums(data$lexical_table)
+  #  )
+  #  
+  # table[["Freq"]] <- as.character(
+  #    freq.temp[
+  #      match(table$Words, freq.temp$words
+  #            ), 2
+  #      ]
+  #    )
    
   if (order == "Inertia") {
       table <- table[order(table$Inertia, decreasing = TRUE), ]
@@ -180,19 +182,19 @@ BuildTableWords <- function(data, dim_x, dim_y, dim_z, lexical_table, translatio
   rownames(table) <- NULL
   
   return( 
-    table[c("Words", "Translation", "Rel_Wt", "Inertia", "Freq", "Coord_X", "Contr_X", "Cos2_X")]
+    table[c("Words", "Translation", "Rel_Wt", "Inertia",  "Coord_X", "Contr_X", "Cos2_X")] # "Freq",
   )
   
 }
 
-BuildTableDocs <- function(dim_x, corpus_metadata, order = "Inertia") {
+BuildTableDocs <- function(ca_analysis, dim_x, corpus_metadata, order) {
   table <- data.frame(
-    Rel_Wt = correspondence_analysis$call$marge.col,
-    Inertia = correspondence_analysis$col$inertia,
-    Coord_X = correspondence_analysis$col$coord[, dim_x], 
-    Contr_X = correspondence_analysis$col$contrib[, dim_x], 
-    Cos2_X = correspondence_analysis$col$cos2[, dim_x],
-    File_name = rownames(correspondence_analysis$col$contrib)
+    Rel_Wt = ca_analysis$call$marge.col,
+    Inertia = ca_analysis$col$inertia,
+    Coord_X = ca_analysis$col$coord[, dim_x], 
+    Contr_X = ca_analysis$col$contrib[, dim_x], 
+    Cos2_X = ca_analysis$col$cos2[, dim_x],
+    File_name = rownames(ca_analysis$col$contrib)
   )
 
   temp <- data.frame(
@@ -229,7 +231,12 @@ BuildTableDocs <- function(dim_x, corpus_metadata, order = "Inertia") {
 }
 
 # 
-BuildTableCollocates <- function(data, word, range, meta_data) {
+BuildTableCollocates <- function(data, word, range_pre, range_post, meta_data) {
+  
+  # data <- mined_text$hierachical_index
+  # word <- 
+  
+  # Bug to fix: if sentences get out of range of corpus, it crashes. 
   
   file_name <- lapply(data$hierachical_index[[word]], function(x) 
     names(data$original_texts_list)[
@@ -252,7 +259,7 @@ BuildTableCollocates <- function(data, word, range, meta_data) {
       paste0(
         unlist(
           data$original_texts_list)[
-            (x - range):(x - 1)
+            (x - range_pre):(x - 1)
             ], collapse = " "
       )
   )
@@ -271,7 +278,7 @@ BuildTableCollocates <- function(data, word, range, meta_data) {
       paste0(
         unlist( 
           data$original_texts_list)[
-            (x + 1):(x + range)
+            (x + 1):(x + range_post)
             ], collapse = " "
         )
     )
