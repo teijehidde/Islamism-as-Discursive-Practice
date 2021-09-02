@@ -120,7 +120,7 @@ ShinyServer <- function(input, output, session) {
   })
   
   output$selected_word <- renderText({
-    paste("Collocates for: ", input$selected_word_collocates, sep = " ")
+    paste("Word in its sentence context: ", input$selected_word_collocates, sep = " ")
   })
   
   output$collocates <- renderTable(
@@ -136,8 +136,8 @@ ShinyServer <- function(input, output, session) {
     striped = TRUE,
     hover = TRUE,
     bordered = TRUE,
-    rownames = TRUE,
-    align = c("llrcl")
+    rownames = FALSE,
+    align = c("lrcl")
   )
   
   #--------- Tab: Correspondence Analysis ---------####
@@ -545,7 +545,7 @@ ShinyServer <- function(input, output, session) {
       }
   )
   
-  output$select_narrative <-renderUI(
+  output$select_text_options <-renderUI(
     {
       selectInput(
         inputId = "selected_text",
@@ -570,34 +570,6 @@ ShinyServer <- function(input, output, session) {
         )
       par(cex=1) 
   }, height = 700)
-  
-  #### TESTING  ####
-   # culled_lexical_table <-
-   #   CullingMinedText(
-   #     data = mined_text,
-   #     culled_words = c(as.character(support_files$tool_words[, 1])),
-   #     v_min = 20
-   #   )
-   # 
-   # cor_an <- CA(
-   #   culled_lexical_table,
-   #   ncp = NULL,
-   #   row.sup = NULL,
-   #   col.sup = NULL,
-   #   quanti.sup = NULL,
-   #   quali.sup = NULL,
-   #   graph = FALSE,
-   #   row.w = NULL
-   # )
-   # 
-   # hi_clus <- HCPC(
-   #   cor_an,
-   #   metric = "manhattan", # "manhattan", # metric = "euclidean" and "manhattan".
-   #   nb.clust = 3,
-   #   order = TRUE,
-   #   graph = FALSE
-   # )
-   #### TESTING  ####
    
    output$selected_cluster_words <- renderText({ 
      paste("Cluster ", input$selected_cluster, sep = " ")
@@ -646,14 +618,342 @@ ShinyServer <- function(input, output, session) {
      rownames = TRUE, 
      digits = 6
    )
-  
+   
+   output$clusterCA_Plot <- renderPlot(
+       {
+         if (input$language_clust == "English") {
+           df_words <- data.frame(
+             label = support_files$translation_list[
+               match(
+                 mined_text$v_corpus[
+                   as.numeric(rownames(culled_lexical_table()))
+                 ], support_files$translation_list$word
+               ), 2
+             ],
+             x = cor_an()$row$coord[, input$axis_x_clust],
+             y = cor_an()$row$coord[, input$axis_y_clust],
+             cluster = hi_clus()$data.clust[
+               match(
+                 rownames(cor_an()$row$coord), 
+                 rownames(hi_clus()$data.clust)
+                 ), 
+               ]$clust,
+             type = "word"
+           )
+         } else {
+           df_words <- data.frame(
+             label = mined_text$v_corpus[
+               as.numeric(rownames(culled_lexical_table()))
+             ],
+             x = cor_an()$row$coord[, input$axis_x_clust],
+             y = cor_an()$row$coord[, input$axis_y_clust],
+             cluster = hi_clus()$data.clust[
+               match(
+                 rownames(cor_an()$row$coord), 
+                 rownames(hi_clus()$data.clust)
+               ), 
+             ]$clust,
+             type = "word"
+           )
+         }
+         
+         # culling data frames
+         if (input$selection_criteria_clust == "Contribution (axis X only)") {
+           df_words_culled <- df_words[
+             order(
+               cor_an()$row$contrib[, input$axis_x_clust],
+               decreasing = TRUE
+             )[
+               0:input$number_words_clust
+             ],
+           ]
+         }
+         if (input$selection_criteria_clust == "Contribution (axis X and Y)") {
+           df_words_culled <- df_words[
+             order(
+               (cor_an()$row$contrib[, input$axis_x_clust] + cor_an()$row$contrib[, input$axis_y_clust]),
+               decreasing = TRUE
+             )[
+               0:input$number_words_clust
+             ],
+           ]
+         }
+         if (input$selection_criteria_clust == "Inertia") {
+           df_words_culled <- df_words[
+             order(
+               cor_an()$call$marge.row,
+               decreasing = TRUE
+             )[
+               0:input$number_words_clust
+             ],
+           ]
+         }
+         df_all <- df_words
+         df_all_culled <- df_words_culled
+         
+         # creating annotations and scale
+         df_annotate <- data.frame(
+           axis_x_description = paste(
+             "Axis ", input$axis_x_clust,
+             ", λ = ", round(cor_an()$eig[input$axis_x_clust, 1], 2),
+             "; var. = ", round(cor_an()$eig[input$axis_x_clust, 2], 2), "%",
+             sep = ""
+           ),
+           axis_y_description = paste(
+             "Axis ", input$axis_y_clust,
+             ", λ = ", round(cor_an()$eig[input$axis_y_clust, 1], 2),
+             "; var. = ", round(cor_an()$eig[input$axis_y_clust, 2], 2), "%",
+             sep = ""
+           )
+         )
+         
+         temp_scale <- list()
+         temp_scale[["x_min"]] <- round(min(df_all$x), 1)
+         temp_scale[["x_max"]] <- temp_scale[["x_min"]] + round(((max(df_all$x) - min(df_all$x)) / 10), 1)
+         temp_scale[["x_middle"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
+         temp_scale[["label"]] <- temp_scale[["x_max"]] - temp_scale[["x_min"]]
+         temp_scale[["y_lower"]] <- (temp_scale[["x_min"]] + temp_scale[["x_max"]]) / 2
+         
+         # Begin plotting graph
+         scatter <- ggplot(data = df_words, aes(x = x, y = y)) +
+           geom_hline(yintercept = 0, size = .15) +
+           geom_vline(xintercept = 0, size = .15)
+         
+         scatter <- scatter +
+           geom_point(
+             data = df_words,
+             aes(x = x, y = y, shape = cluster),
+             colour = "black",
+             alpha = .25,
+             size = 1.5
+           ) +
+           geom_text_repel(
+             data = df_all_culled,
+             aes(x = x, y = y, label = label),
+             colour = "black",
+             size = (input$textsize_clust / 10),
+             alpha = 1, # colour = "black",
+             stat = "identity",
+             parse = FALSE,
+             box.padding = unit(0.2, "lines"),
+             point.padding = unit(1e-02, "lines"),
+             segment.color = "white", # #666666
+             segment.size = 0.0,
+             arrow = NULL,
+             force = .2,
+             max.iter = 2000,
+             nudge_x = 0,
+             nudge_y = 0,
+             na.rm = FALSE,
+             show.legend = FALSE,
+             inherit.aes = FALSE
+           )
+         
+         # Layout
+         scatter <- scatter +
+           theme_bw() +
+           theme(
+             panel.grid.major = element_blank(),
+             panel.grid.minor = element_blank(),
+             legend.background = element_blank(),
+             legend.box.background = element_blank(),
+             axis.title.x = element_blank(),
+             axis.text = element_blank(),
+             plot.title = element_text(size = 10),
+             axis.ticks = element_blank()
+           ) +
+           theme(
+             legend.position = c(.99, .99), # position of legend
+             legend.justification = c(1, 1),
+             legend.background = element_blank(),
+             legend.title = element_blank()
+           ) +
+           labs(x = "", y = "") +
+           ggtitle(
+             paste0("Figure 1: Discursive space of the Syrian conflict, principal plane ",
+                    input$axis_x_clust,
+                    "-",
+                    input$axis_y_clust,
+                    sep = ""
+             )
+           ) +
+           labs(
+             caption = paste0(
+               "The ", as.english(input$number_words_clust),
+               " most contributing (translated) words along axis ",
+               input$axis_x_clust, " and ", input$axis_y_clust,
+               " are plotted."
+             ),
+             sep = ""
+           ) +
+           coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE)
+         # 
+         # # adding annotations and scale to plot.
+         scatter <- scatter +
+           geom_segment(
+             data = df_all, aes(
+               x = temp_scale$x_min,
+               y = max(y),
+               xend = temp_scale$x_max,
+               yend = max(y)
+             ), size = .15
+           ) +
+           geom_segment(
+             data = df_all, aes(
+               x = temp_scale$x_min,
+               y = (max(y) + .02),
+               xend = temp_scale$x_min,
+               yend = (max(y) - .02)
+             ), size = .15
+           ) +
+           geom_segment(
+             data = df_all, aes(
+               x = temp_scale$x_max,
+               y = (max(y) + .02),
+               xend = temp_scale$x_max,
+               yend = (max(y) - .02)
+             ), size = .15
+           ) +
+           annotate("text",
+                    x = temp_scale$x_middle,
+                    y = max(df_all$y),
+                    label = temp_scale$label,
+                    size = (input$textsize_clust / 10),
+                    alpha = .8,
+                    hjust = .5,
+                    vjust = 1.5
+           ) +
+           annotate("text",
+                    x = temp_scale$x_middle,
+                    y = max(df_all$y),
+                    label = "scale",
+                    size = (input$textsize_clust / 10),
+                    alpha = .8,
+                    hjust = .5,
+                    vjust = -.75
+           ) + 
+           # Description amount variance
+           annotate("text",
+                    x = max(df_all$x),
+                    y = 0,
+                    label = df_annotate$axis_x_description,
+                    size = (input$textsize_clust / 10),
+                    alpha = .8,
+                    hjust = 1,
+                    vjust = -1
+           ) +
+           annotate("text",
+                    x = 0,
+                    y = max(df_all$y),
+                    label = df_annotate$axis_y_description,
+                    size = (input$textsize_clust / 10),
+                    alpha = .8,
+                    hjust = 1,
+                    vjust = -1,
+                    angle = 90
+           )
+         
+         # printing plot
+         scatter
+       },
+       width = 750,
+       height = 750,
+       res = 100
+     )
+   
+   output$selected_text_output <- renderText(
+     { 
+       paste("Selected text: ", input$selected_text, " (Cluster ", input$selected_cluster, ")", sep = "")
+       }
+   )
+   
+   # TESTING #### 
+   # culled_lexical_table <- CullingMinedText(
+   #   data = mined_text,
+   #   culled_words = c(as.character(support_files$tool_words[, 1])),
+   #   v_min = 20
+   # )
+   # 
+   # cor_an <- CA(
+   #   culled_lexical_table,
+   #   ncp = NULL,
+   #   row.sup = NULL,
+   #   col.sup = NULL,
+   #   quanti.sup = NULL,
+   #   quali.sup = NULL,
+   #   graph = FALSE,
+   #   row.w = NULL
+   # )
+   # 
+   # hi_clus <-  HCPC(
+   #   cor_an,
+   #   metric = "manhattan", # "manhattan", # metric = "euclidean" and "manhattan".
+   #   nb.clust = 3,
+   #   order = TRUE,
+   #   graph = FALSE
+   # )
+   # 
+   # input <- list()
+   # input[["axis_x_clust"]] <- 1
+   # input[["axis_y_clust"]] <- 2
+   # input[["number_words_clust"]] <- 20
+   # input[["textsize_clust"]] <- 25
+   # input[["selected_cluster"]] <- 2
+   # input[["selected_text"]] <- "SIF_charter"
 
    
-   # hi_clus$desc.var
-  
-   # rownames(hi_clus$desc.var[[3]])
-  
-  #### TESTING ####
+   # choices = rownames(
+   #   hi_clus()$desc.var[[
+   #     input$selected_cluster
+   #   ]]
+     
+   output$selected_text_table <- renderTable(
+     {
+       temp <- hi_clus()$desc.var[[input$selected_cluster]]
+       t(temp[
+          rownames(temp) == input$selected_text,
+         ])
+   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 4, rownames = FALSE)
+   
+   output$selected_text_narrative <- renderTable({
+
+     narrative  <- unlist(corpus$word_lists)
+     words_cluster <- hi_clus()$call$X [
+       hi_clus()$call$X$clust == input$selected_cluster, 
+       ]
+     document_indices <- mined_text$index$start[
+       which(mined_text$index$file_names == input$selected_text)
+       ]:
+       mined_text$index$end[
+         which(mined_text$index$file_names == input$selected_text)
+         ]
+     word_indices <- unlist(
+       mined_text$hierachical_index[
+         mined_text$v_corpus[
+           as.integer(rownames(words_cluster))
+           ] # provides list of indices of all words in cluster.
+         ]
+       )
+
+     narrative[
+       word_indices[
+         word_indices %in% document_indices
+         ]
+       ] <-
+       lapply(word_indices[
+         word_indices %in% document_indices
+         ], function(x) 
+         paste0(
+           "(+)", narrative[x], "(+)", sep = ""
+           )
+         )
+
+     narrative <- data.frame(
+       Text = paste0(
+         narrative[document_indices], collapse = " "
+         )
+       )
+   }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 0)
   
 } 
 

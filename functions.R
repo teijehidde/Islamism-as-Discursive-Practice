@@ -230,66 +230,55 @@ BuildTableDocs <- function(ca_analysis, dim_x, corpus_metadata, order) {
   )
 }
 
-# 
 BuildTableCollocates <- function(data, word, range_pre, range_post, meta_data) {
   
-  # data <- mined_text$hierachical_index
-  # word <- 
+  # still buggy... 
   
-  # Bug to fix: if sentences get out of range of corpus, it crashes. 
-  
-  file_name <- lapply(data$hierachical_index[[word]], function(x) 
-    names(data$original_texts_list)[
-      length(
-        data$index$start[
-          data$index$start < x
-          ]
+  result <- t(
+    tibble(
+      sapply(data$hierachical_index[[word]], function(x)
+        c(
+           unlist(
+             names(data$original_texts_list)[
+                length(
+                  data$index$start[
+                    data$index$start < x
+                    ]
+                  )
+                ]
+             ),
+          paste0(
+            unlist(
+              data$original_texts_list
+              )[
+                (x + 1):(x + range_post)
+              ], collapse = " "
+          ),
+          paste0(
+            unlist(
+              data$original_texts_list
+              )[x]
+          ), 
+          paste0(
+            unlist(
+              data$original_texts_list
+              )[
+                (x - range_pre):(x - 1)
+              ], collapse = " "
+          )
         )
-      ]
+      )
     )
-  
-  label_text <- lapply(
-    file_name, function(x) paste0(
-      meta_data[meta_data$file_name == x,]$label
-      )
-  )
-  
-  text_pre <- lapply(
-    data$hierachical_index[[word]], function(x) 
-      paste0(
-        unlist(
-          data$original_texts_list)[
-            (x - range_pre):(x - 1)
-            ], collapse = " "
-      )
-  )
-  
-  original_word <- lapply(
-    data$hierachical_index[[word]], function(x) 
-      paste0(
-        unlist( 
-          data$original_texts_list
-          )[x]
-      )
   ) 
-  
-  text_post <- lapply(
-    data$hierachical_index[[word]], function(x) 
-      paste0(
-        unlist( 
-          data$original_texts_list)[
-            (x + 1):(x + range_post)
-            ], collapse = " "
-        )
-    )
-  
-  # note that pre and post are switch because Arabic is an RTL language. 
-  result <- tibble( 
-    label = label_text, 
-    text_post = text_post,
-    word = original_word, 
-    text_pre = text_pre, 
-  )
+  colnames(result) <- c("Filename", " ", "Original word", " ")
+
+  # TBI:  
+  # label_text <- lapply(
+  #   file_name, function(x) paste0(
+  #     meta_data[meta_data$file_name == x,]$label
+  #     )
+  # )
+  # 
   
   return (result)
 } 

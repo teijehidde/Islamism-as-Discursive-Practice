@@ -2,11 +2,16 @@
 
 shiny_ui <- fluidPage(
   titlePanel(
-    h2("CA Text Analysis of Syrian Opposition Statements 2011-2017", align = "center")
+    h2("Political Islam as Discursive Practice: Reproducing Results", align = "center")
   ),
   
     tabsetPanel(
       #--------- Tab: Correspondence Analysis ---------####
+      tabPanel("Introduction",
+               br(), 
+               h5("And have a small markdown introduction here. 
+                  Possibly taken straigh from github repo description. ")
+               ),
       tabPanel("Corpus",
                br(), 
                sidebarLayout(
@@ -34,37 +39,6 @@ shiny_ui <- fluidPage(
                    )
                  )
                ), 
-      tabPanel("Collocations",
-               br(), 
-               sidebarLayout(
-                 sidebarPanel(
-                   uiOutput("options_words"),
-                   sliderInput(
-                     inputId = "range_pre",
-                     label = "Range right:",
-                     min = 1,
-                     max = 25,
-                     value = 5
-                     ), 
-                   sliderInput(
-                     inputId = "range_post",
-                     label = "Range left:",
-                     min = 1,
-                     max = 25,
-                     value = 5
-                   )
-                 ), 
-                 mainPanel(
-                   h3(
-                     textOutput("selected_word")
-                     ),
-                   h3("Stats"),
-                   # todo ##
-                   h3("Original sentences"),
-                   tableOutput("collocates")
-                   )
-                 )
-               ),
       tabPanel("Correspondence Analysis",
                br(), 
                sidebarLayout(
@@ -167,12 +141,53 @@ shiny_ui <- fluidPage(
                    sliderInput(inputId = "nb_clust", 
                                label = "Number of clusters:", 
                                min = 1, 
-                               max = 25, 
+                               max = 6, 
                                value = 3, 
                                step = 1
                                ),
+                  sliderInput(
+                       inputId = "axis_x_clust",
+                       label = "Axis X:",
+                       min = 1,
+                       max = 25, # nrow(correspondence_analysis$eig),
+                       value = 1
+                   ),
+                   sliderInput(
+                     inputId = "axis_y_clust",
+                     label = "Axis Y:",
+                     min = 1,
+                     max = 25, # nrow(correspondence_analysis$eig),
+                     value = 2
+                   ),
+                   selectInput(
+                     inputId = "language_clust",
+                     label = "Language:",
+                     choices = c("English", "Arabic")
+                   ),
+                   selectInput(
+                     inputId = "selection_criteria_clust",
+                     label = "Labels included in plot on basis of:",
+                     choices = c(
+                       "Contribution (axis X and Y)", "Contribution (axis X only)", "Inertia"
+                     ), 
+                     selected = "Contribution (axis X only)"
+                   ),
+                   sliderInput(
+                     inputId = "number_words_clust",
+                     label = "Number of words in plot:",
+                     min = 0,
+                     max = 50, # nrow(correspondence_analysis$row$coord),
+                     value = 40
+                   ),
+                   sliderInput(
+                     inputId = "textsize_clust",
+                     label = "Text size plot:",
+                     min = 1,
+                     max = 100,
+                     value = 25
+                   ),
                    uiOutput("select_cluster"),
-                   uiOutput("select_narrative")
+                   uiOutput("select_text_options")
                    ),
                  mainPanel(
                    tabsetPanel( 
@@ -198,30 +213,47 @@ shiny_ui <- fluidPage(
                                ),
                               tableOutput("table_cluster_axes")
                      ),  
-                     tabPanel("CA cluster plot"
-                              #plotOutput("clusterCA.Plot")
+                     tabPanel("CA cluster plot",
+                              plotOutput("clusterCA_Plot")
                      ), 
-                     tabPanel("Narrative Selected Text"
-                              #plotOutput("clusterCA.Plot")
+                     tabPanel("Narrative Selected Text",
+                              h3(textOutput("selected_text_output")),
+                              tableOutput("selected_text_table"),
+                              tableOutput("selected_text_narrative")
                      )
                    )
                  )
                )
       ),
-      tabPanel("Network Analysis",
+      tabPanel("Words in Context",
                br(), 
                sidebarLayout(
-                 sidebarPanel(),
-                 mainPanel()
+                 sidebarPanel(
+                   uiOutput("options_words"),
+                   sliderInput(
+                     inputId = "range_pre",
+                     label = "Range right:",
+                     min = 1,
+                     max = 25,
+                     value = 5
+                   ), 
+                   sliderInput(
+                     inputId = "range_post",
+                     label = "Range left:",
+                     min = 1,
+                     max = 25,
+                     value = 5
+                   )
+                 ), 
+                 mainPanel(
+                   h3(
+                     textOutput("selected_word")
+                   ),
+                   h3("Original sentences"),
+                   tableOutput("collocates")
+                 )
                )
-      ),
-      tabPanel("t-SNE",
-               br(), 
-               sidebarLayout(
-                 sidebarPanel(),
-                 mainPanel()
                )
-      )
       )
   )
       
