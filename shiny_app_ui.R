@@ -9,8 +9,7 @@ shiny_ui <- fluidPage(
       #--------- Tab: Correspondence Analysis ---------####
       tabPanel("Introduction",
                br(), 
-               h5("And have a small markdown introduction here. 
-                  Possibly taken straigh from github repo description. ")
+               includeMarkdown("./introduction.md")
                ),
       tabPanel("Corpus",
                br(), 
@@ -130,7 +129,7 @@ shiny_ui <- fluidPage(
                    )
                  )
                ), 
-      tabPanel("Hierarchical Clustering of CA Results",
+      tabPanel("Hierarchical Clustering",
                br(), 
                sidebarLayout(
                  sidebarPanel(

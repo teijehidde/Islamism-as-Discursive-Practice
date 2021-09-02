@@ -867,46 +867,6 @@ ShinyServer <- function(input, output, session) {
        }
    )
    
-   # TESTING #### 
-   # culled_lexical_table <- CullingMinedText(
-   #   data = mined_text,
-   #   culled_words = c(as.character(support_files$tool_words[, 1])),
-   #   v_min = 20
-   # )
-   # 
-   # cor_an <- CA(
-   #   culled_lexical_table,
-   #   ncp = NULL,
-   #   row.sup = NULL,
-   #   col.sup = NULL,
-   #   quanti.sup = NULL,
-   #   quali.sup = NULL,
-   #   graph = FALSE,
-   #   row.w = NULL
-   # )
-   # 
-   # hi_clus <-  HCPC(
-   #   cor_an,
-   #   metric = "manhattan", # "manhattan", # metric = "euclidean" and "manhattan".
-   #   nb.clust = 3,
-   #   order = TRUE,
-   #   graph = FALSE
-   # )
-   # 
-   # input <- list()
-   # input[["axis_x_clust"]] <- 1
-   # input[["axis_y_clust"]] <- 2
-   # input[["number_words_clust"]] <- 20
-   # input[["textsize_clust"]] <- 25
-   # input[["selected_cluster"]] <- 2
-   # input[["selected_text"]] <- "SIF_charter"
-
-   
-   # choices = rownames(
-   #   hi_clus()$desc.var[[
-   #     input$selected_cluster
-   #   ]]
-     
    output$selected_text_table <- renderTable(
      {
        temp <- hi_clus()$desc.var[[input$selected_cluster]]
