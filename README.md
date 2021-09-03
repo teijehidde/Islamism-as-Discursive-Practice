@@ -21,6 +21,6 @@ To run, download the file into a local folder and run the script from there.  Th
 
 ## References 
 
-- [1] Donker, Teije Hidde. 2021. ‘Political Islam as Discursive Practice: The Social Construction of Political Ideas in Contentious Episodes’. In *ECPR Joint Sessions - Hybrid Pathways to Resistance in the Muslim World: Islamist Groups and the Modern State in a Comparative Perspective*. European Consortium for Political Research.
+- [1] Donker, Teije Hidde. 2021. ‘Political Islam as Discursive Practice: The Social Construction of Political Ideas in Contentious Episodes’. In *ECPR Joint Sessions - Hybrid Pathways to Resistance in the Muslim World: Islamist Groups and the Modern State in a Comparative Perspective*. European Consortium for Political Research. *The paper is available [here](https://teijehidde.files.wordpress.com/2021/09/ecpr-js-2021-paper.pdf).*
 - [2] Lebart, Ludovic, A. Salem, and L. Berry. 1997. Exploring Textual Data. Springer Science & Business Media
 
