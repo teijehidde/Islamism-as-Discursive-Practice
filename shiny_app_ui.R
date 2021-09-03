@@ -249,7 +249,7 @@ shiny_ui <- fluidPage(
                      textOutput("selected_word")
                    ),
                    h3("Original sentences"),
-                   tableOutput("collocates")
+                   tableOutput("words_in_context")
                  )
                )
                )

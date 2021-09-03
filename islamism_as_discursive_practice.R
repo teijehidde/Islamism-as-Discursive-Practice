@@ -10,10 +10,11 @@ new_packages <- list_of_packages[
   ]
 if(length(new_packages)) install.packages(new_packages)
 invisible(lapply(list_of_packages, require, character.only = TRUE))
-here()
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 source("functions.R")
 
 #----------- Loading corpora and meta data -----------####
+
 corpus <- LoadData("./corpus")
 support_files_list <- list.files("./support_files", full.names = TRUE)
 support_files <- lapply(
@@ -29,6 +30,7 @@ support_files <- lapply(
     )
   }
 )
+
 
 names(support_files) <- gsub(
   ".csv", "", list.files(
@@ -47,30 +49,49 @@ mined_text <- MiningText(
   drop_punctuation = TRUE
 )
 
-culled_lexical_table <- CullingMinedText(
-  data = mined_text,
-  culled_words = c(as.character(support_files$tool_words[, 1])),
-  v_min = 20
-)
-#----------- Analysis -----------####
-cor_an <- CA(
-  culled_lexical_table,
-  ncp = NULL,
-  row.sup = NULL,
-  col.sup = NULL,
-  quanti.sup = NULL,
-  quali.sup = NULL,
-  graph = FALSE,
-  row.w = NULL
-)
+org_names_stemmed <- unlist(  
+  strsplit(
+    as.character(
+      support_files$organization_metadata$org_arabic
+      ), " "
+    )
+) 
+org_names_stemmed <- unique(
+  sapply(
+    org_names_stemmed, function(x) StemmingWords(
+      x, drop_chars = support_files$stemmed_characters
+      )
+    )
+  )
 
-hi_clus <-  HCPC(
-  cor_an,
-  metric = "manhattan", # "manhattan", # metric = "euclidean" and "manhattan".
-  nb.clust = 3,
-  order = TRUE,
-  graph = FALSE
-)
+# NOT RUN {
+# culled_lexical_table_s <- CullingMinedText(
+#    data = mined_text,
+#    culled_words = c(as.character(support_files$tool_words[, 1]), org_names_stemmed),
+#    v_min = 20
+#  )
+# 
+# #----------- Analysis -----------####
+# cor_an_s <- CA(
+#    culled_lexical_table_s,
+#    ncp = NULL,
+#    row.sup = NULL,
+#    col.sup = NULL,
+#    quanti.sup = NULL,
+#    quali.sup = NULL,
+#    graph = FALSE,
+#    row.w = NULL
+#  )
+# #
+# 
+# hi_clus_s <-  HCPC(
+#    cor_an_s,
+#    metric = "manhattan", # "manhattan", # metric = "euclidean" and "manhattan".
+#    nb.clust = 3,
+#    order = TRUE,
+#    graph = FALSE
+# )
+# } NOT RUN
 
 #----------- Dynamic Data Analysis in Shiny app -----------####
 source("shiny_app_ui.R")
