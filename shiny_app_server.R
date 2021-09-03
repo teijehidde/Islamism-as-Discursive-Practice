@@ -3,11 +3,11 @@
 
 ShinyServer <- function(input, output, session) {
   
-  #--------- Tab: corpus ---------#### 
+  #--------- Tab: Corpus ---------#### 
   culled_lexical_table <- reactive({
     CullingMinedText(
       data = mined_text, 
-      culled_words = c(as.character(support_files$tool_words[, 1])),
+      culled_words = c(as.character(support_files$tool_words[, 1]), org_names_stemmed),
       v_min = input$v_min
     )
   }) 
@@ -106,39 +106,6 @@ ShinyServer <- function(input, output, session) {
       main = NULL
     )
   })
-  
-  #--------- tab: collocates ---------####
-  output$options_words <-renderUI({
-    options <- mined_text$v_corpus[
-      as.integer(rownames(culled_lexical_table()))
-    ]
-    selectInput(
-      inputId = "selected_word_collocates",
-      label = "Select word for collocates:",
-      choices = options
-    )
-  })
-  
-  output$selected_word <- renderText({
-    paste("Word in its sentence context: ", input$selected_word_collocates, sep = " ")
-  })
-  
-  output$collocates <- renderTable(
-    {
-      BuildTableCollocates(
-        data = mined_text,
-        word = input$selected_word_collocates,
-        range_pre = input$range_pre,
-        range_post = input$range_post,
-        meta_data = support_files$document_metadata
-      )
-    },
-    striped = TRUE,
-    hover = TRUE,
-    bordered = TRUE,
-    rownames = FALSE,
-    align = c("lrcl")
-  )
   
   #--------- Tab: Correspondence Analysis ---------####
   cor_an <- reactive(
@@ -915,6 +882,38 @@ ShinyServer <- function(input, output, session) {
        )
    }, striped = TRUE, hover = TRUE, bordered  = TRUE, digits = 0)
   
+   #--------- tab: Words in Context ---------####
+   output$options_words <-renderUI({
+     options <- mined_text$v_corpus[
+       as.integer(rownames(culled_lexical_table()))
+     ]
+     selectInput(
+       inputId = "selected_word_collocates",
+       label = "Select word for collocates:",
+       choices = options,
+       selected = "منهج"
+     )
+   })
+   
+   output$selected_word <- renderText({
+     paste("Word in its sentence context: ", input$selected_word_collocates, sep = " ")
+   })
+   
+   output$words_in_context <- renderTable(
+     {
+       BuildTableCollocates(
+         data = mined_text,
+         word = input$selected_word_collocates,
+         range_pre = input$range_pre,
+         range_post = input$range_post
+       )
+     },
+     striped = TRUE,
+     hover = TRUE,
+     bordered = TRUE,
+     rownames = FALSE,
+     align = c("lrcl")
+   )
 } 
 
 

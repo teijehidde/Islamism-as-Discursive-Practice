@@ -115,8 +115,11 @@ MiningText <- function(corpus, stemming_fun = StemmingWords, ... ) { # corpus sh
   return(y)
 }
 
+# TESTING #### 
 # data = mined_text
-# culled_words = c(as.character(support_files$tool_words[, 1]))
+# culled_words = c(as.character(support_files$tool_words[, 1]), org_names_stemmed)
+# 
+# length(culled_words)
 # v_min = 20
 
 CullingMinedText <- function(data, culled_words = NULL, v_min) {
@@ -124,20 +127,24 @@ CullingMinedText <- function(data, culled_words = NULL, v_min) {
   
   y <- list()
   
-  y[["culled_words"]] <- append(
-    culled_words, names(
-      data$vi_frequency_words[data$vi_frequency_words < v_min]
+  y[["v_corpus"]] <- names(
+      data$vi_frequency_words[data$vi_frequency_words > v_min]
       )
-    )
-  
-  # y[["v_corpus"]] <- data$v_corpus[!(data$v_corpus %in% y$culled_words)]
+  y[["v_corpus"]] <- y$v_corpus[!(y$v_corpus %in% culled_words)]
   # y[["v_corpus"]] <- y$v_corpus[!(y$v_corpus == "")]
   
-  y[["lexical_table"]] <- data$lexical_table[!(data$v_corpus %in% y$culled_words), ]
-  y[["lexical_table"]] <- y$lexical_table[colSums(y$lexical_table) != 0]
+  y[["lexical_table"]] <- data$lexical_table[data$v_corpus %in% y$v_corpus, ]
+  # y[["lexical_table"]] <- y$lexical_table[colSums(y$lexical_table) != 0]
   
   return (y$lexical_table )
   }
+
+# # TESTING ####
+# data = mined_text
+# ca_analysis = cor_an_s
+# dim_x = 1
+# translation_list = support_files$translation_list
+# order = "inertia"
 
 #----------- Functions Presentation Results  -----------####
 BuildTableWords <- function(data, ca_analysis, dim_x, translation_list, order) {
@@ -159,19 +166,19 @@ BuildTableWords <- function(data, ca_analysis, dim_x, translation_list, order) {
        ), 2
      ]
   
-  # freq.temp <- data.frame(
-  #    words = data$v_culled_corpus[
-  #      as.numeric(rownames(data$lexical_table))
-  #    ],
-  #    freq = rowSums(data$lexical_table)
-  #  )
-  #  
-  # table[["Freq"]] <- as.character(
-  #    freq.temp[
-  #      match(table$Words, freq.temp$words
-  #            ), 2
-  #      ]
-  #    )
+  freq.temp <- data.frame(
+      words = data$v_corpus[
+        as.numeric(rownames(data$lexical_table))
+      ],
+      freq = rowSums(data$lexical_table)
+    )
+    
+  table[["Freq"]] <- as.character(
+      freq.temp[
+        match(table$Words, freq.temp$words
+              ), 2
+        ]
+      )
    
   if (order == "Inertia") {
       table <- table[order(table$Inertia, decreasing = TRUE), ]
@@ -182,7 +189,7 @@ BuildTableWords <- function(data, ca_analysis, dim_x, translation_list, order) {
   rownames(table) <- NULL
   
   return( 
-    table[c("Words", "Translation", "Rel_Wt", "Inertia",  "Coord_X", "Contr_X", "Cos2_X")] # "Freq",
+    table[c("Words", "Translation", "Freq", "Rel_Wt", "Inertia",  "Coord_X", "Contr_X", "Cos2_X")] # 
   )
   
 }
@@ -230,19 +237,63 @@ BuildTableDocs <- function(ca_analysis, dim_x, corpus_metadata, order) {
   )
 }
 
-BuildTableCollocates <- function(data, word, range_pre, range_post, meta_data) {
+CheckRange <- function(x, pre = NULL, post = NULL) {
   
-  # still buggy... 
+  # still does not quite work teh way it should... 
+  
+  if(is.null(pre) == FALSE) {
+    range <- max(c(
+      x - pre,
+      data$index$start[
+        length(data$index$start[
+          data$index$start <= x
+          ])
+      ]
+      )
+    )
+  }
+
+  if(is.null(post) == FALSE) {
+    range <- min(c(
+      x + post,
+      data$index$end[
+        length(data$index$end[
+          data$index$end >! x
+        ])
+      ]
+    )
+    ) 
+  } 
+
+  return(range)
+}
+
+# data = mined_text
+# word = "مباد"
+# range_pre = 5
+# range_post = 5
+# index_temp <- data$hierachical_index[[word]]
+# x <- 42649
+# 
+test <- BuildTableCollocates(
+  data = mined_text,
+  word = "مباد",
+  range_pre = 5,
+  range_post = 5
+)
+
+BuildTableCollocates <- function(data, word, range_pre, range_post) {
   
   result <- t(
     tibble(
       sapply(data$hierachical_index[[word]], function(x)
+
         c(
-           unlist(
+          unlist(
              names(data$original_texts_list)[
                 length(
                   data$index$start[
-                    data$index$start < x
+                    data$index$start <= x
                     ]
                   )
                 ]
@@ -251,37 +302,31 @@ BuildTableCollocates <- function(data, word, range_pre, range_post, meta_data) {
             unlist(
               data$original_texts_list
               )[
-                (x + 1):(x + range_post)
+                (x + 1):CheckRange(x, post = range_post)
               ], collapse = " "
           ),
           paste0(
             unlist(
               data$original_texts_list
               )[x]
-          ), 
+          ),
           paste0(
             unlist(
               data$original_texts_list
               )[
-                (x - range_pre):(x - 1)
+                CheckRange(x, pre = range_pre):(x - 1)
               ], collapse = " "
           )
         )
       )
     )
-  ) 
+  )
   colnames(result) <- c("Filename", " ", "Original word", " ")
 
-  # TBI:  
-  # label_text <- lapply(
-  #   file_name, function(x) paste0(
-  #     meta_data[meta_data$file_name == x,]$label
-  #     )
-  # )
-  # 
-  
   return (result)
-} 
+}
+
+
 
 #----------- End -----------####
 
