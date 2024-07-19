@@ -1,23 +1,30 @@
 # Political Islam as Discursive Practice: Reproducing Results
 
-This repository provides the data and script necessary to reproduce the results of the article *Political Islam as Discursive Practice*. [1]  It also includes a shiny app as an accessible approach to try out the methods used in the article.  
+This repository provides the data and script necessary to reproduce the results of the article *Political Islam as Discursive Practice*. [1]  It also includes a shiny app as an accessible approach to try out the methods used in the article.
 
-------
+## Contents
 
-## Features
-
-- Includes the corpus of founding statements and self descriptions of opposition groups in the Syrian Conflict. See the folder 'corpus' for all the documents in .txt format.  
+- See the folder 'corpus' for all the documents of the corpus in .txt format. The corpus consists of founding statements and self descriptions of opposition groups in the Syrian Conflict. 
 - The folder 'support_files' contains .csv files with meta data of the documents and organisations, as well as the lists of stop words, stemmed characters and English translations that were used.   
-- The script 'islamism_as_discursive_practice.R' has the basic analysis. The text_mining and analysis follows the approach as set out by Lebart et al [2].
-- At the end, the script includes a (optional) call to a interactive shiny application that includes all the tables, plots and texts that were referenced in the article.
+- The script 'islamism_as_discursive_practice.R' does the analysis. The text_mining and analysis follows the approach as set out by Lebart et al [2].
+- At the end, the script includes an (optional) call to a interactive shiny application that includes all the tables, plots and texts that were referenced in the article.
 
-----------
+## Getting Started
+To get a local copy up and running do the following
 
-## Installation 
+### prerequisits 
+[Install R](https://cloud.r-project.org/) on your system.
 
-This is a simple R script. 
+When working in VSCode, it is also recommended to install the [REditorSupport extension](https://marketplace.visualstudio.com/items?itemName=reditorsupport.r).
 
-To run, download the file into a local folder and run the script from there.  The script installs any missing required packages. 
+### Installation 
+1. Clone the repository. 
+    
+```bash 
+    git clone https://github.com/teijehidde/Islamism-as-Discursive-Practice 
+```
+
+2. Run the script. The script installs any missing dependencies automatically. 
 
 ## References 
 

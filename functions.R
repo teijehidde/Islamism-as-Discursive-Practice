@@ -55,23 +55,25 @@ StemmingWords <- function(x,
   return(x)
 }
 
-MiningText <- function(corpus, stemming_fun = StemmingWords, ... ) { # corpus should be list of text factors per part.
+MiningText <- function(
+  # corpus should be list of text factors per part.
+  corpus, stemming_fun = StemmingWords, ... ) { 
 
   y <- list()
-  
+
   y[["original_texts_list"]] <- lapply(
     corpus$narratives, function(x) {
       strsplit(x, split = " ")
     }
   )
-  
+
   y[["index_documents"]] <- list()
   y$index[["file_names"]] <- names(y$original_texts_list)
   for (i in 1:length(y$original_texts_list)) {
     y$index[["end"]][[i]] <- length(unlist(y$original_texts_list[1:i]))
   }
   y$index[["start"]] <- c(1, y$index$end + 1)
-  
+
   y[["t_stemmed_corpus"]] <- unlist(
     sapply(
       y$original_texts_list, function(x) {
