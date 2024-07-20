@@ -891,7 +891,7 @@ ShinyServer <- function(input, output, session) {
        inputId = "selected_word_collocates",
        label = "Select word for collocates:",
        choices = options,
-       selected = "منهج"
+       selected = input$selected_word_collocates
      )
    })
    

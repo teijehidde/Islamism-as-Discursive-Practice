@@ -71,9 +71,16 @@ MiningText <- function(
   y$index[["file_names"]] <- names(y$original_texts_list)
   for (i in 1:length(y$original_texts_list)) {
     y$index[["end"]][[i]] <- length(unlist(y$original_texts_list[1:i]))
+    if (i == 1) {
+      y$index[["start"]][[i]] <- 1
+    } else {
+      y$index[["start"]][[i]] <- y$index[["end"]][[i - 1]] + 1
+    }
+    
   }
-  y$index[["start"]] <- c(1, y$index$end + 1)
-
+  # y$index[["start"]] <- c(1, y$index$end[1:length((y$original_texts_list) - 1)]  + 1)
+  
+  
   y[["t_stemmed_corpus"]] <- unlist(
     sapply(
       y$original_texts_list, function(x) {
@@ -98,13 +105,15 @@ MiningText <- function(
        as.data.frame(
          table(
            match(
-             y$t_stemmed_corpus[y$index$start[z]:y$index$end[z]], y$v_corpus
+             y$t_stemmed_corpus[y$index$start[[z]]:y$index$end[[z]]], y$v_corpus
            )
          )
        )
      }
    )
   names(y$segmented_hi) <- y$index$file_names
+  
+  # y$t_stemmed_corpus[y$index$start[[1]]]
 
   y[["lexical_table"]] <- suppressWarnings(Reduce(
     function(...) full_join(..., by = "Var1"), y$segmented_hi
@@ -118,11 +127,11 @@ MiningText <- function(
 }
 
 # TESTING #### 
-# data = mined_text
-# culled_words = c(as.character(support_files$tool_words[, 1]), org_names_stemmed)
-# 
-# length(culled_words)
-# v_min = 20
+#data = mined_text
+#culled_words = c(as.character(support_files$tool_words[, 1]), org_names_stemmed)
+
+#length(culled_words)
+#v_min = 20
 
 CullingMinedText <- function(data, culled_words = NULL, v_min) {
   # not implemented yet: culled hierarchical_index, culled segmented_hi. 
@@ -276,14 +285,7 @@ CheckRange <- function(x, pre = NULL, post = NULL) {
 # range_post = 5
 # index_temp <- data$hierachical_index[[word]]
 # x <- 42649
-# 
-test <- BuildTableCollocates(
-  data = mined_text,
-  word = "مباد",
-  range_pre = 5,
-  range_post = 5
-)
-
+#
 BuildTableCollocates <- function(data, word, range_pre, range_post) {
   
   result <- t(
@@ -329,6 +331,11 @@ BuildTableCollocates <- function(data, word, range_pre, range_post) {
 }
 
 
-
+#test <- BuildTableCollocates(
+#  data = mined_text,
+#  word = "مباد",
+#  range_pre = 5,
+#  range_post = 5
+#)
 #----------- End -----------####
 

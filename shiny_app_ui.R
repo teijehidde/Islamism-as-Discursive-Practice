@@ -2,7 +2,7 @@
 
 shiny_ui <- fluidPage(
   titlePanel(
-    h2("Political Islam as Discursive Practice: Reproducing Results", align = "center")
+    h2("Political Islam as Discursive Practice", align = "center")
   ),
   
     tabsetPanel(
@@ -19,7 +19,7 @@ shiny_ui <- fluidPage(
                      inputId = "v_min",
                      label = "Threshold for occurence term in corpus:",
                      min = 1,
-                     max = 100, # max() -- length hieracrhical index? 
+                     max = 50, # max() -- length hieracrhical index? 
                      value = 20
                      )
                    ),
@@ -73,14 +73,14 @@ shiny_ui <- fluidPage(
                      inputId = "number_words",
                      label = "Number of words in plot:",
                      min = 0,
-                     max = 50, # nrow(correspondence_analysis$row$coord),
+                     max = 100, # nrow(correspondence_analysis$row$coord),
                      value = 40
                      ),
                    sliderInput(
                      inputId = "number_docs",
                      label = "Number of documents in plot:",
                      min = 0,
-                     max = 50, # nrow(correspondence_analysis$col$coord),
+                     max = 100, # nrow(correspondence_analysis$col$coord),
                      value = 20
                      ),
                    sliderInput(
@@ -214,45 +214,45 @@ shiny_ui <- fluidPage(
                      ),  
                      tabPanel("CA cluster plot",
                               plotOutput("clusterCA_Plot")
-                     ), 
-                     tabPanel("Narrative Selected Text",
-                              h3(textOutput("selected_text_output")),
-                              tableOutput("selected_text_table"),
-                              tableOutput("selected_text_narrative")
-                     )
+                     ) 
+                     # tabPanel("Narrative Selected Text",
+                     #          h3(textOutput("selected_text_output")),
+                     #          tableOutput("selected_text_table"),
+                     #          tableOutput("selected_text_narrative")
+                     # )
                    )
                  )
                )
-      ),
-      tabPanel("Words in Context",
-               br(), 
-               sidebarLayout(
-                 sidebarPanel(
-                   uiOutput("options_words"),
-                   sliderInput(
-                     inputId = "range_pre",
-                     label = "Range right:",
-                     min = 1,
-                     max = 25,
-                     value = 5
-                   ), 
-                   sliderInput(
-                     inputId = "range_post",
-                     label = "Range left:",
-                     min = 1,
-                     max = 25,
-                     value = 5
-                   )
-                 ), 
-                 mainPanel(
-                   h3(
-                     textOutput("selected_word")
-                   ),
-                   h3("Original sentences"),
-                   tableOutput("words_in_context")
-                 )
-               )
-               )
+   )
+      # tabPanel("Words in Context",
+      #          br(), 
+      #          sidebarLayout(
+      #            sidebarPanel(
+      #              uiOutput("options_words"),
+      #              sliderInput(
+      #                inputId = "range_pre",
+      #                label = "Range right:",
+      #                min = 1,
+      #                max = 25,
+      #                value = 5
+      #              ), 
+      #              sliderInput(
+      #                inputId = "range_post",
+      #                label = "Range left:",
+      #                min = 1,
+      #                max = 25,
+      #                value = 5
+      #              )
+      #            ), 
+      #            mainPanel(
+      #              h3(
+      #                textOutput("selected_word")
+      #              ),
+      #              h3("Original sentences"),
+      #              tableOutput("words_in_context")
+      #            )
+      #          )
+      #          )
       )
   )
       

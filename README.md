@@ -15,8 +15,6 @@ To get a local copy up and running do the following
 ### prerequisits 
 [Install R](https://cloud.r-project.org/) on your system.
 
-When working in VSCode, it is also recommended to install the [REditorSupport extension](https://marketplace.visualstudio.com/items?itemName=reditorsupport.r).
-
 ### Installation 
 1. Clone the repository. 
     
@@ -25,6 +23,8 @@ When working in VSCode, it is also recommended to install the [REditorSupport ex
 ```
 
 2. Run the script. The script installs any missing dependencies automatically. 
+
+3. It is recommended to use RStudio as IDE when working with this code. 
 
 ## References 
 
